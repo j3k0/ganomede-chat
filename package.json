@@ -1,8 +1,8 @@
 {
-  "name": "notifications",
+  "name": "chat",
   "version": "1.3.5",
-  "api": "notifications/v1",
-  "description": "notifications micro service",
+  "api": "chat/v1",
+  "description": "chat micro service",
   "private": true,
   "main": "index.js",
   "scripts": {

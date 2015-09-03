@@ -1,46 +1,17 @@
-Notifications
--------------
+Chat
+----
 
-This module allows a player to be notified of events using [long-polling](#retrieve-recent-messages-get).
+Multi-rooms chat service.
 
-Notificatinos are created by other ganomede services by [posting notification](#send-a-message-post):
-
-  * [Invitations module](/api-docs/invitations.md)
-  * [Turngame module](/api-docs/turngame.md)
-  * [Coordinator module](/api-docs/turngame.md)
-
-Notificatinos from different services will be of different `type` and will contain different `data`, but following fields will always be present in every notification:
-
-```js
-{ "id": '12',                  // String       Notification ID
-  "timestamp": 1429084002258,  // JSTimestmap  Created at this time
-  "from": "turngame/v1",       // String       Created by this service
-
-  "type": "invitation",            // String  Notification type (depends on the service)
-  "data": {}                       // Object  Notification data (depends on the service and type)
-  "push": {}                       // Object  Optional, include if you want this notification to be also sent as push-notification to user devices.
-}
-```
-
-Notifications containing `.push` object will also be sent as push notifications to user devices. Payload of that push notification will contain original ganomede notification. Fields in `.push` describe how notification will be displayed to user.
-
-``` js
-{ "app": "triominos/v1"  // String, required  Which app to notify
-
-  "title": [ "localization-key", "args..." ],   // String[], optional
-  "message": [ "localization-key", "args..." ]  // String[], optional
-}
-```
-
-`.push.title` and `.push.message` must be String arrays of at least 1 length containing localization key at `[0]` followed by any number of localization arguments. If either title, or message, or both are not present, notificaiton alert will default to `config.pushApi.apn.defaultAlert` string.
+Chat is organized into "rooms". A room has a list of players allowed to participate. Everyone in a room can invite other participants.
 
 Relations
 ---------
 
  * "AuthDB" (Redis) -> to check authentication status of user making requests
    * see https://github.com/j3k0/node-authdb
- * "NofificationsDB"
-   * store "username" -> Array of notifications (trimmed to 50)
+ * Notification service -> notify users when a chat message was added to a room
+   * see https://github.com/j3k0/ganomede-notifications
 
 Configuration
 -------------
@@ -49,25 +20,13 @@ Variables available for service configuration (see [config.js](/config.js)):
 
  * `PORT`
  * `ROUTE_PREFIX`
- * `REDIS_AUTH_PORT_6379_TCP_ADDR` — IP of the AuthDB redis
- * `REDIS_AUTH_PORT_6379_TCP_PORT` — Port of the AuthDB redis
+ * `REDIS_AUTH_PORT_6379_TCP_ADDR` - IP of the AuthDB redis
+ * `REDIS_AUTH_PORT_6379_TCP_PORT` - Port of the AuthDB redis
+ * `NOTIFICATIONS_PORT_8080_TCP_ADDR` - IP of the notifications service
+ * `NOTIFICATIONS_PORT_8080_TCP_PORT` - Port of the notifications service
+ * `MAX_MESSAGES` - Max number of messages stored in a room (default 100)
+ * `API_SECRET` - Give access to private APIs
  * `NODE_ENV` — Antything except `production` means that app is running in development (debug) mode
- * Notifications API
-   - `REDIS_NOTIFICATIONS_PORT_6379_TCP_ADDR` — Redis notifications host
-   - `REDIS_NOTIFICATIONS_PORT_6379_TCP_PORT` — Redis notifications port
-   - `MESSAGE_QUEUE_SIZE` — Redis notifications queue size
-   - `API_SECRET` — Secret passcode required to send notifications
- * Online List API
-   - `ONLINE_LIST_SIZE` — Redis list size with users most recently online
-   - `ONLINE_LIST_INVISIBLE_MATCH` - Regex matching invisible players
-   - `REDIS_ONLINELIST_PORT_6379_TCP_ADDR` — Redis online list host
-   - `REDIS_ONLINELIST_PORT_6379_TCP_PORT` — Redis online list port
- * Push Notifications API
-   - `REDIS_PUSHAPI_PORT_6379_TCP_ADDR` — Redis host for storing push tokens
-   - `REDIS_PUSHAPI_PORT_6379_TCP_PORT` — Redis port for storing push tokens
-   - `APN_CERT_FILEPATH` — Path to .pem file with APN certificate
-   - `APN_KEY_FILEPATH` — Path to .pem file with APN private key
-   - `NODE_ENV` - set to production to connect to the production gateway. Otherwise it will connect to the sandbox.
 
 AuthDB
 ------
@@ -78,123 +37,108 @@ AuthDB
 API
 ---
 
-# Users Messages [/notifications/v1/auth/:authToken/messages]
+All "room" related calls require a valid authToken, either:
 
-    + Parameters
-        + authToken (string, required) ... Authentication token
+ * the token for one of the room participants.
+ * `API_SECRET`, in which case messages are posted as pseudo-user "$$"
 
-## Retrieve recent messages [GET]
+# Rooms [/chat/v1/auth/:authToken/rooms]
 
-    + GET parameters
-        + after (integer) ... All message received after the one with given ID
+## Create a room [POST]
 
-Will retrieve all recent messages for the given user. In case no new messages are available, the request will wait for data until a timeout occurs.
-
-### response [200] OK
-
-    [{
-        "id": 12,
-        "timestamp": 1429084002258,
-        "from": "turngame/v1",
-        "type": "MOVE",
-        "data": { ... }
-    },
-    {
-        "id": 19,
-        "timestamp": 1429084002258,
-        "from": "invitations/v1",
-        "type": "INVITE",
-        "data": { ... }
-    }]
-
-### response [401] Unauthorized
-
-If authToken is invalid.
-
-# Messages [/notifications/v1/messages]
-
-## Send a message [POST]
+Create a room with a given configuration (or return one that already exists).
 
 ### body (application/json)
 
     {
-        "to": "some_username",
-        "from": "turngame/v1",
-        "secret": "some secret passphrase",
-        "type": "MOVE",
-        "data": { ... }
+        "type": "triominos/v1",
+        "users": [ "alice", "bob" ]
     }
 
 ### response [200] OK
 
     {
-        "id": 12
-        "timestamp": 1429084002258
+        "id": "triominos/v1,alice,bob"
+    }
+
+### design note
+
+Forming the id by concatening `type` and usernames (sorted) is an internal-detail suggestion that should make it easier to find if a room with the given config already exists, it's not mandatory. Client shouldn't rely on that to be true.
+
+# Room [/chat/v1/auth/:authToken/rooms/:roomId]
+
+    + Parameters
+        + authToken (string, required) ... Authentication token
+        + roomId (string, required) ... Room identifier
+
+## Retrieve content of a room [GET]
+
+### response [200] OK
+
+    {
+        "type": "triominos/v1",
+        "users": [ "alice", "bob" ],
+        "messages": [{
+            "timestamp": 1429084002258,
+            "from": "alice",
+            "type": "text",
+            "message": "Hey bob! How are you today?"
+        }, {
+            "timestamp": 1429084002258,
+            "from": "bob",
+            "type": "text",
+            "message": "Hi Alice :)"
+        }, {
+            "timestamp": 1429084002258,
+            "from": "bob",
+            "type": "text",
+            "message": "Good thanks, let's play"
+        }, {
+            "timestamp": 1429084002258,
+            "from": "$$",
+            "type": "event",
+            "message": "game_started"
+        }]
     }
 
 ### response [401] Unauthorized
 
-If secret is invalid.
+If authToken is invalid or user isn't a participant in the room.
+
+# Messages [/chat/v1/auth/:authToken/rooms/:roomId/messages]
+
+    + Parameters
+        + authToken (string, required) ... Authentication token
+        + roomId (string, required) ... Room identifier
+
+## Add a message [POST]
+
+Append a new message to the room. If the number of messages in the room exceeds `MAX_MESSAGES`, the oldest will be discarded.
+
+### body (application/json)
+
+    {
+        "timestamp": 1429084016939,
+        "type": "txt",
+        "message": "Hey bob! How are you today?"
+    }
+
+### response [200] OK
+
+### response [401] Unauthorized
 
 ### design note
 
-The value of "secret" should be equal to the `API_SECRET` environment variable.
+A notification will be sent to all users in the room (except the sender of the message).
 
-# Online User List [/notifications/v1/online]
+    {
+        "from": "chat/v1",
+        "type": "message",
+        "data": {
+            "timestamp": 1429084002258,
+            "from": "bob",
+            "type": "text",
+            "message": "Good thanks, let's play"
+        }
+    }
 
-Every time client sends request for retrieving messages for a particular user, that user is added to a top of the list of recently online users in Redis.
-
-List is trimmed at `ONLINE_LIST_SIZE` most recent users.
-
-## Retrieve List [GET]
-
-Will return a list of usernames of most recently online users. This list is publicly available (no `API_SECRET` or auth required).
-
-### response [200] OK
-
-    [ "username",
-      "alice",
-      ...
-      "bob"
-    ]
-
-# Online status [/auth/:authToken/online]
-
-User is online.
-
-## Set as online [POST]
-
-Add user to the list of online players, returns the list.
-
-### response [200] OK
-
-    [
-      "username",
-      "alice",
-      ...
-      "bob"
-    ]
-
-# Push Notifications API
-
-## Save Push Token [POST /auth/:authToken/push-token]
-
-Saves user's push notifications token to database. Example Body:
-
-``` js
-{
-    app: 'substract-game',         // String, which app this token is for
-    type: 'apn',                   // String, which push notifications provider
-                                   //         this token is for, `apn` or `gcm`
-                                   //         (see Token.TYPES)
-    value: 'alicesubstracttoken'   // token value
-}
-```
-
-# Push Notifications Worker
-
-The server doesn't send push notifications, only add them to a task list. A worker will read from this task list and do the actual sending.
-
-Worker is found in src/push-api/sender-cli.coffee
-
-A way of running it continously is through the push-worker.sh script, that'll spawn one worker every second.
