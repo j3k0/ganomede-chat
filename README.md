@@ -3,7 +3,7 @@ Chat
 
 Multi-rooms chat service.
 
-Chat is organized into "rooms". A room has a list of players allowed to participate. Everyone in a room can invite other participants.
+Chat is organized into "rooms". Each room has a type and a list of players allowed to participate.
 
 Relations
 ---------
@@ -46,7 +46,7 @@ All "room" related calls require a valid authToken, either:
 
 ## Create a room [POST]
 
-Create a room with a given configuration (or return one that already exists).
+Create a room with a given configuration (or return the one that already exists).
 
 ### body (application/json)
 
@@ -58,7 +58,15 @@ Create a room with a given configuration (or return one that already exists).
 ### response [200] OK
 
     {
-        "id": "triominos/v1,alice,bob"
+        "id": "triominos/v1/alice/bob",
+        "type": "triominos/v1",
+        "users": [ "alice", "bob" ],
+        "messages": [{
+            "timestamp": 1429084002258,
+            "from": "alice",
+            "type": "text",
+            "message": "Hey bob! How are you today?"
+        }]
     }
 
 ### design note
@@ -76,6 +84,7 @@ Forming the id by concatening `type` and usernames (sorted) is an internal-detai
 ### response [200] OK
 
     {
+        "id": "triominos/v1/alice/bob",
         "type": "triominos/v1",
         "users": [ "alice", "bob" ],
         "messages": [{
@@ -101,9 +110,11 @@ Forming the id by concatening `type` and usernames (sorted) is an internal-detai
         }]
     }
 
+### response [400] No such room
+
 ### response [401] Unauthorized
 
-If authToken is invalid or user isn't a participant in the room.
+If authToken is invalid or user isn't a participant in the room, and not `API_SECRET`.
 
 # Messages [/chat/v1/auth/:authToken/rooms/:roomId/messages]
 
@@ -127,6 +138,8 @@ Append a new message to the room. If the number of messages in the room exceeds 
 
 ### response [401] Unauthorized
 
+If authToken is invalid or user isn't a participant in the room, and not `API_SECRET`.
+
 ### design note
 
 A notification will be sent to all users in the room (except the sender of the message).
@@ -141,4 +154,8 @@ A notification will be sent to all users in the room (except the sender of the m
             "message": "Good thanks, let's play"
         }
     }
+
+**push notification**
+
+An optional `push` field can be added in the body of the added message. If set, the content of this field will be added to the notification, but won't be stored in the room's message.
 
