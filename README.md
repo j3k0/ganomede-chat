@@ -10,6 +10,7 @@ Relations
 
  * "AuthDB" (Redis) -> to check authentication status of user making requests
    * see https://github.com/j3k0/node-authdb
+ * "ChatDB" (Redis) -> store rooms messages
  * Notification service -> notify users when a chat message was added to a room
    * see https://github.com/j3k0/ganomede-notifications
 
@@ -22,6 +23,8 @@ Variables available for service configuration (see [config.js](/config.js)):
  * `ROUTE_PREFIX`
  * `REDIS_AUTH_PORT_6379_TCP_ADDR` - IP of the AuthDB redis
  * `REDIS_AUTH_PORT_6379_TCP_PORT` - Port of the AuthDB redis
+ * `REDIS_CHAT_PORT_6379_TCP_ADDR` - IP of the ChatDB redis
+ * `REDIS_CHAT_PORT_6379_TCP_PORT` - Port of the ChatDB redis
  * `NOTIFICATIONS_PORT_8080_TCP_ADDR` - IP of the notifications service
  * `NOTIFICATIONS_PORT_8080_TCP_PORT` - Port of the notifications service
  * `MAX_MESSAGES` - Max number of messages stored in a room (default 100)
@@ -72,6 +75,8 @@ Create a room with a given configuration (or return the one that already exists)
 ### design note
 
 Forming the id by concatening `type` and usernames (sorted) is an internal-detail suggestion that should make it easier to find if a room with the given config already exists, it's not mandatory. Client shouldn't rely on that to be true.
+
+Room is gonna expire 60 days after last POST.
 
 # Room [/chat/v1/auth/:authToken/rooms/:roomId]
 
