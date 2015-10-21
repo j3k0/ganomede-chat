@@ -12,22 +12,14 @@
   "author": "Jean-Christophe Hoelt <hoelt@fovea.cc>",
   "license": "Private",
   "dependencies": {
-    "apn": "^1.7.4",
     "authdb": "^0.2.0",
-    "blanket": "^1.1.6",
     "bunyan": "^1.2.3",
     "coffee-script": "^1.8.0",
-    "coffeelint": "^1.6.1",
-    "concat-stream": "^1.4.7",
-    "eslint": "^0.10.0",
-    "forever": "^0.14.2",
-    "ganomede": "^0.2.0",
+    "forever": "^0.15.1",
     "ganomede-helpers": "^0.4.1",
-    "jshint": "^2.5.10",
-    "mocha": "^2.0.1",
     "newrelic": "^1.20.2",
-    "redis": "^0.12.1",
-    "restify": "^2.8.3",
+    "redis": "^2.2.5",
+    "restify": "^4.0.3",
     "vasync": "^1.6.2"
   },
   "config": {
@@ -39,10 +31,19 @@
       "loader": "./node-loaders/coffee-script"
     }
   },
+  "eslintConfig": {
+    "extends": "eslint:recommended",
+    "env": {
+      "node": true,
+      "mocha": true
+    }
+  },
   "devDependencies": {
+    "blanket": "^1.1.6",
+    "coffeelint": "^1.13.0",
+    "eslint": "^1.7.2",
     "expect.js": "^0.3.1",
-    "fakeredis": "^0.3.0",
-    "sinon": "^1.15.4",
-    "supertest": "^0.15.0"
+    "mocha": "^2.3.3",
+    "supertest": "^1.1.0"
   }
 }

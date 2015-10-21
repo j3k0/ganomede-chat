@@ -18,21 +18,18 @@ if (cluster.isMaster) {
     // master
     log.info("starting up...", {env: process.env, config: config});
     cluster.fork();
-    cluster.on("disconnect", function(worker) {
+    cluster.on("disconnect", function(/*worker*/) {
         log.error("disconnect!");
         cluster.fork();
     });
 }
 else {
-
-    // worker
-    var restify = require("restify");
+    var helpers = require('ganomede-helpers');
     var main = require("./src/main");
-    var server = require('./src/server');
+    var server = helpers.restify.createServer();
 
     // Intitialize backend, add routes
-    main.initialize();
-    main.addRoutes(config.routePrefix, server);
+    main(config.routePrefix, server);
 
     // Handle uncaughtException, kill the worker
     server.on('uncaughtException', function (req, res, route, err) {

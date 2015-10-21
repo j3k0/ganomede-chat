@@ -11,6 +11,7 @@ function removeServiceVersion (name) {
 }
 
 module.exports = {
+  pkg: pkg,
   port: +process.env.PORT || 8000,
   routePrefix: process.env.ROUTE_PREFIX || pkg.api,
   longPollDurationMillis: 30000,
