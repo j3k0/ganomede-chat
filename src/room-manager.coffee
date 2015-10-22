@@ -21,7 +21,7 @@ class Room
 
 
   @id: (info) ->
-    return "#{info.type}/#{info.users.join('/')}"
+    return "#{info.type}/#{info.users.sort().join('/')}"
 
 class RoomManager
   constructor: (options={}) ->

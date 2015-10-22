@@ -99,6 +99,19 @@ describe 'RoomManager', () ->
         room = room_
         done()
 
+    describe '.id()', () ->
+      it 'room id is prefixed with type', () ->
+        expect(RoomManager.Room.id(roomInfo).indexOf(service)).to.be(0)
+
+      it 'room id ends with sorted list of user', () ->
+        users = ['x', 'a', '01', 'z']
+        actual = RoomManager.Room.id({
+          type: service,
+          users: users
+        })
+
+        expect(actual).to.be("#{service}/#{users.sort().join('/')}")
+
     describe '#addMessage()', () ->
       it 'adds a message to a room', (done) ->
         room.addMessage message, (err) ->
