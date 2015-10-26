@@ -64,11 +64,31 @@ describe 'RoomManager', () ->
         expect(millis).to.be.greaterThan(config.redis.ttlMillis - 200)
         done()
 
-    it 'returns error if room already exists', (done) ->
-      manager.create roomInfo, (err, room) ->
-        expect(err).to.be.an(Error)
-        expect(err.message).to.be(RoomManager.errors.ROOM_EXISTS)
-        done()
+    describe 'returns error when', () ->
+      testError = (spec, createArgument, expectedMessage) ->
+        it spec, (done) ->
+          manager.create createArgument, (err, room) ->
+            expect(err).to.be.an(Error)
+            expect(err.message).to.be(expectedMessage)
+            done()
+
+      testError('room already exists',
+        roomInfo, RoomManager.errors.ROOM_EXISTS)
+
+      testError('options.type is missing',
+        {}, RoomManager.errors.INVALID_CREATION_OPTIONS)
+
+      testError('options.type is empty string',
+        {type: ''}, RoomManager.errors.INVALID_CREATION_OPTIONS)
+
+      testError('options.users is missing',
+        {type: service}, RoomManager.errors.INVALID_CREATION_OPTIONS)
+
+      testError('options.users is not an array',
+        {type: service, users: {}}, RoomManager.errors.INVALID_CREATION_OPTIONS)
+
+      testError('options.users is empty',
+        {type: service, users: []}, RoomManager.errors.INVALID_CREATION_OPTIONS)
 
   describe '#findById()', () ->
     it 'returns room by its id', (done) ->

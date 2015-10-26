@@ -71,10 +71,10 @@ class RoomManager
       process.nextTick(callback.bind(null, err))
 
     unless options.type
-      return tickError('options.type is required')
+      return tickError(RoomManager.errors.INVALID_CREATION_OPTIONS)
 
     unless Array.isArray(options.users) && (options.users.length > 0)
-      return tickError('options.users must be non-empty Array')
+      return tickError(RoomManager.errors.INVALID_CREATION_OPTIONS)
 
     room = new Room(options)
 
@@ -105,7 +105,8 @@ class RoomManager
     @redis.pexpire @key(roomId), @ttlMillis, callback
 
   @errors: {
-    ROOM_EXISTS: 'ROOM_EXISTS'
+    ROOM_EXISTS: 'ROOM_EXISTS',
+    INVALID_CREATION_OPTIONS: 'INVALID_CREATION_OPTIONS'
   }
 
   @Room: Room
