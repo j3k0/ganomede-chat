@@ -22,6 +22,9 @@ class Room
   addMessage: (message, callback) ->
     @messageList.add(message, callback)
 
+  hasUser: (username) ->
+    return -1 != @users.indexOf(username)
+
   @id: (info) ->
     return "#{info.type}/#{info.users.sort().join('/')}"
 

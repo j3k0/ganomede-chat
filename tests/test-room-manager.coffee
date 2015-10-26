@@ -113,6 +113,15 @@ describe 'RoomManager', () ->
 
         expect(actual).to.be("#{service}/#{users.sort().join('/')}")
 
+    describe '#hasUser()', () ->
+      it 'returns true if username is participant', () ->
+        expect(room.hasUser('alice')).to.be(true)
+        expect(room.hasUser('bob')).to.be(true)
+
+      it 'returns false otherwise', () ->
+        expect(room.hasUser('joe')).to.be(false)
+        expect(room.hasUser({})).to.be(false)
+
     describe '#addMessage()', () ->
       it 'adds a message to a room', (done) ->
         room.addMessage message, (err) ->
