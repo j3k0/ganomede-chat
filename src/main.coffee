@@ -1,4 +1,5 @@
 helpers = require 'ganomede-helpers'
+api = require './api'
 log = require './log'
 
 module.exports = (prefix, server) ->
@@ -6,3 +7,9 @@ module.exports = (prefix, server) ->
 
   helpers.restify.apis.ping()(prefix, server)
   helpers.restify.apis.about()(prefix, server)
+
+  chatApi = api({
+
+  })
+
+  chatApi(prefix, server)
