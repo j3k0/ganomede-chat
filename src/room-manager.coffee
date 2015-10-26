@@ -11,14 +11,16 @@ class Room
     # Define invisible property, so it doesn't get json'd,
     # but still is accessible to prototype functions.
     if (messageList)
-      Object.defineProperty(this, 'messageList', {value: messageList})
+      @_setMessageList(messageList)
+
+  _setMessageList: (list) ->
+    Object.defineProperty(@, 'messageList', {value: list})
 
   messages: (callback) ->
     @messageList.items(callback)
 
   addMessage: (message, callback) ->
     @messageList.add(message, callback)
-
 
   @id: (info) ->
     return "#{info.type}/#{info.users.sort().join('/')}"
@@ -74,13 +76,14 @@ class RoomManager
     room = new Room(options)
 
     @redis.set @key(room.id), JSON.stringify(room), 'PX', @ttlMillis, 'NX',
-    (err, created) ->
+    (err, created) =>
       if (err)
         return callback(err)
 
       if (!created)
         return callback(new Error(RoomManager.errors.ROOM_EXISTS))
 
+      room._setMessageList(@messageList(room.id))
       callback(null, room)
 
   findById: (roomId, callback) ->

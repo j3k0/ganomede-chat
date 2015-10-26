@@ -55,12 +55,13 @@ describe 'RoomManager', () ->
       manager.create roomInfo, (err, room) ->
         expect(err).to.be(null)
         expect(room).to.eql(roomExpected)
+        expect(room).to.have.property('messageList')
         done()
 
     it 'sets room expiry upon creation', (done) ->
       redisClient.pttl manager.key(roomId), (err, millis) ->
         expect(err).to.be(null)
-        expect(millis).to.be.greaterThan(config.redis.ttlMillis - 50)
+        expect(millis).to.be.greaterThan(config.redis.ttlMillis - 200)
         done()
 
     it 'returns error if room already exists', (done) ->

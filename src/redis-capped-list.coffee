@@ -34,5 +34,4 @@ class RedisCappedList
 
         callback(null, results[2])
 
-
 module.exports = RedisCappedList
