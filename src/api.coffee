@@ -1,3 +1,4 @@
+async = require 'async'
 redis = require 'redis'
 AuthDB = require 'authdb'
 restify = require 'restify'
@@ -64,12 +65,56 @@ module.exports = (options={}) ->
       req.params.messages = messages
       next()
 
+  createRoom = (req, res, next) ->
+    roomManager.create req.body || {}, (err, room) ->
+      if (err)
+        if (err.message == RoomManager.errors.INVALID_CREATION_OPTIONS)
+          return next(new restify.BadRequestError)
+
+        if (err.message == RoomManager.errors.ROOM_EXISTS)
+          id = RoomManager.Room.id(req.body)
+
+          return async.waterfall [
+            roomManager.findById.bind(roomManager, id),
+            (room, cb) ->
+              room.messages (err, messages) ->
+                cb(err, room, messages)
+          ], (err, room, messages) ->
+            if (err)
+              log.error 'createRoom() failed to retrieve existing room',
+                err: err,
+                body: req.body
+              return next(new restify.InteralServerError)
+
+            req.params.room = room
+            req.params.messages = messages
+            next()
+
+        log.error 'createRoom() failed',
+          err: err,
+          body: req.body
+        return next(new restify.InteralServerError)
+
+      req.params.room = room
+      req.params.messages = []
+      next()
+
+  sendRoomJson = (req, res, next) ->
+    if res.headersSent
+      return next()
+
+    reply = lodash.extend({messages: req.params.messages}, req.params.room)
+    res.json(reply)
+    next()
+
   return (prefix, server) ->
     server.get "/#{prefix}/auth/:authToken/rooms/:roomId",
       apiSecretOrAuthMiddleware,
       fetchRoom,
       fetchMessages,
-      (req, res, next) ->
-        reply = lodash.extend({messages: req.params.messages}, req.params.room)
-        res.json(reply)
-        next()
+      sendRoomJson
+
+    server.post "#{prefix}/auth/:authToken/rooms",
+      apiSecretOrAuthMiddleware,
+      createRoom,
+      sendRoomJson

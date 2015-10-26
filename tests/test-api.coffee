@@ -32,6 +32,14 @@ describe 'Chat API', () ->
   endpoint = (path='/', token='invalid-token') ->
     return "/#{config.routePrefix}/auth/#{token}#{path}"
 
+  roomsEndpoint = (username, roomId) ->
+    token = samples.users[username]?.token
+    if username == process.env.API_SECRET
+      token = process.env.API_SECRET
+
+    room = if roomId then "/#{encodeURIComponent(roomId)}" else ''
+    return endpoint("/rooms#{room}", token)
+
   before (done) ->
     # Create users
     process.env.API_SECRET = 'api-secret'
@@ -66,40 +74,67 @@ describe 'Chat API', () ->
       redisClient.del.apply(redisClient, keys.concat(done))
 
   describe 'GET /<auth>/rooms/:roomId', () ->
-    path = (roomId, username) ->
-      token = samples.users[username]?.token
-      if username == process.env.API_SECRET
-        token = process.env.API_SECRET
-
-      return endpoint("/rooms/#{encodeURIComponent(roomId)}", token)
-
     it 'returns room info with a list of messages', (done) ->
       go()
-        .get(path(samples.rooms[0].id, 'alice'))
+        .get(roomsEndpoint('alice', samples.rooms[0].id))
         .expect(200)
         .end (err, res) ->
           expect(err).to.be(null)
           expect(res.body).to.eql(lodash.extend({
-            messages: lodash(samples.messages[0]).reverse().value()
+            messages: lodash(
+              lodash.clone(samples.messages[0])
+            ).reverse().value()
           }, samples.rooms[0]))
           done()
 
     it 'allows access with :authToken being API_SECRET', (done) ->
       go()
-        .get(path(samples.rooms[0].id, process.env.API_SECRET))
+        .get(roomsEndpoint(process.env.API_SECRET, samples.rooms[0].id))
         .expect(200, done)
 
     it '404 when room is not found', (done) ->
       go()
-        .get(path('non-existent-room', 'alice'))
+        .get(roomsEndpoint('alice', 'non-existent-room'))
         .expect(404, done)
 
     it '401 when user is not in the room', (done) ->
       go()
-        .get(path(samples.rooms[1].id, 'alice'))
+        .get(roomsEndpoint('alice', samples.rooms[1].id))
         .expect(401, done)
 
     it '401 on invalid auth tokens', (done) ->
       go()
-        .get(path('does-not-matter'))
+        .get(roomsEndpoint('no-username-hence-no-token', 'does-not-mater'))
+        .expect(401, done)
+
+  describe 'POST /<auth>/rooms', () ->
+    it 'creates new room', (done) ->
+      go()
+        .post(roomsEndpoint('alice'))
+        .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
+        .expect(200, {
+          id: 'game/v1/alice/friendly-potato'
+          type: 'game/v1',
+          users: [ 'alice', 'friendly-potato' ],
+          messages: [],
+        }, done)
+
+    it 'sends room info, if it already exists', (done) ->
+      go()
+        .post(roomsEndpoint('bob'))
+        .send(samples.rooms[0])
+        .expect(200, lodash.extend({
+          messages: lodash(lodash.clone(samples.messages[0])).reverse().value()
+        }, samples.rooms[0]), done)
+
+    it 'allows access with :authToken being API_SECRET', (done) ->
+      go()
+        .post(roomsEndpoint(process.env.API_SECRET))
+        .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
+        .expect(200, done)
+
+    it '401 on invalid auth tokens', (done) ->
+      go()
+        .post(roomsEndpoint('no-username-hence-no-token'))
+        .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
         .expect(401, done)
