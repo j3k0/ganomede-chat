@@ -6,6 +6,7 @@ helpers = require 'ganomede-helpers'
 lodash = require 'lodash'
 config = require '../config'
 RoomManager = require './room-manager'
+Message = require './message'
 log = require './log'
 
 module.exports = (options={}) ->
@@ -107,14 +108,36 @@ module.exports = (options={}) ->
     res.json(reply)
     next()
 
+  addMessage = (req, res, next) ->
+    try
+      username = if req.params.apiSecret then '$$' else req.params.user.username
+      message = new Message(username, req.body)
+    catch e
+      return next(new restify.BadRequestError(e.message))
+
+    req.params.room.addMessage message, (err, nMessages) ->
+      if (err)
+        log.err 'addMessage() failed',
+          err: err
+          body: req.body
+        return next(new restify.InteralServerError)
+
+      res.send(200)
+      next()
+
   return (prefix, server) ->
+    server.post "#{prefix}/auth/:authToken/rooms",
+      apiSecretOrAuthMiddleware,
+      createRoom,
+      sendRoomJson
+
     server.get "/#{prefix}/auth/:authToken/rooms/:roomId",
       apiSecretOrAuthMiddleware,
       fetchRoom,
       fetchMessages,
       sendRoomJson
 
-    server.post "#{prefix}/auth/:authToken/rooms",
+    server.post "/#{prefix}/auth/:authToken/rooms/:roomId/messages",
       apiSecretOrAuthMiddleware,
-      createRoom,
-      sendRoomJson
+      fetchRoom,
+      addMessage

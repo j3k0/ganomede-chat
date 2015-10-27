@@ -40,6 +40,9 @@ describe 'Chat API', () ->
     room = if roomId then "/#{encodeURIComponent(roomId)}" else ''
     return endpoint("/rooms#{room}", token)
 
+  messagesEndpoint = (username, roomId) ->
+    return roomsEndpoint(username, roomId) + '/messages'
+
   before (done) ->
     # Create users
     process.env.API_SECRET = 'api-secret'
@@ -138,3 +141,55 @@ describe 'Chat API', () ->
         .post(roomsEndpoint('no-username-hence-no-token'))
         .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
         .expect(401, done)
+
+  describe 'POST /<auth>/rooms/:roomId/messages', () ->
+    message =
+      timestamp: Date.now()
+      type: 'text'
+      message: 'Newest message'
+
+    roomId = samples.rooms[0].id
+    redisKey = "#{prefix}:#{roomId}:messages"
+
+    expectedJson = (sender) ->
+      return lodash.extend({from: sender}, message)
+
+    checkMessage = (sender, cb) ->
+      expected = lodash.extend({from: sender}, message)
+      redisClient.lindex redisKey, 0, (err, json) ->
+        expect(err).to.be(null)
+        expect(JSON.parse(json)).to.eql(expectedJson(sender))
+        cb()
+
+    it 'adds message to a room', (done) ->
+      go()
+        .post(messagesEndpoint('alice', roomId))
+        .send(message)
+        .expect(200)
+        .end (err, res) ->
+          expect(err).to.be(null)
+          checkMessage('alice', done)
+
+    it 'allows access with :authToken being API_SECRET', (done) ->
+      go()
+        .post(messagesEndpoint(process.env.API_SECRET, roomId))
+        .send(message)
+        .expect(200)
+        .end (err, res) ->
+          expect(err).to.be(null)
+          checkMessage('$$', done)
+
+    it '401 when user is not in the room', (done) ->
+      go()
+        .post(messagesEndpoint('alice', samples.rooms[1].id))
+        .expect(401, done)
+
+    it '401 on invalid auth tokens', (done) ->
+      go()
+        .post(messagesEndpoint('no-username-hence-no-token', roomId))
+        .expect(401, done)
+
+    it '404 when room is not found', (done) ->
+      go()
+        .post(messagesEndpoint('alice', 'non-existent-room'))
+        .expect(404, done)
