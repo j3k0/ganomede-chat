@@ -1,6 +1,7 @@
 async = require 'async'
 redis = require 'redis'
 lodash = require 'lodash'
+sinon = require 'sinon'
 supertest = require 'supertest'
 expect = require 'expect.js'
 helpers = require 'ganomede-helpers'
@@ -28,6 +29,9 @@ describe 'Chat API', () ->
     ttlMillis: config.redis.ttlMillis,
     maxSize: config.redis.maxRoomMessages
   })
+
+  spies =
+    refreshTtl: roomManager.refreshTtl = sinon.spy(roomManager.refreshTtl)
 
   endpoint = (path='/', token='invalid-token') ->
     return "/#{config.routePrefix}/auth/#{token}#{path}"
@@ -123,6 +127,7 @@ describe 'Chat API', () ->
         }, done)
 
     it 'sends room info, if it already exists', (done) ->
+    # Calls .refreshTtl() on room[0]
       go()
         .post(roomsEndpoint('bob'))
         .send(samples.rooms[0])
@@ -130,7 +135,12 @@ describe 'Chat API', () ->
           messages: lodash(lodash.clone(samples.messages[0])).reverse().value()
         }, samples.rooms[0]), done)
 
+    it 'refreshes ttl of existing rooms', () ->
+      expect(spies.refreshTtl.callCount).to.be(1)
+      expect(spies.refreshTtl.getCall(0).args[0]).to.be(samples.rooms[0].id)
+
     it 'allows access with :authToken being API_SECRET', (done) ->
+    # Calls .refreshTtl() on room[1]
       go()
         .post(roomsEndpoint(process.env.API_SECRET))
         .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
@@ -162,6 +172,7 @@ describe 'Chat API', () ->
         cb()
 
     it 'adds message to a room', (done) ->
+    # Calls .refreshTtl() on room[0]
       go()
         .post(messagesEndpoint('alice', roomId))
         .send(message)
@@ -169,6 +180,10 @@ describe 'Chat API', () ->
         .end (err, res) ->
           expect(err).to.be(null)
           checkMessage('alice', done)
+
+    it 'refreshes room\'s ttl', () ->
+      expect(spies.refreshTtl.callCount).to.be(3)
+      expect(spies.refreshTtl.getCall(2).args[0]).to.be(samples.rooms[0].id)
 
     it 'allows access with :authToken being API_SECRET', (done) ->
       go()

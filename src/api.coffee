@@ -89,7 +89,7 @@ module.exports = (options={}) ->
 
             req.params.room = room
             req.params.messages = messages
-            next()
+            refreshRoom(req, res, next)
 
         log.error 'createRoom() failed',
           err: err,
@@ -125,6 +125,16 @@ module.exports = (options={}) ->
       res.send(200)
       next()
 
+  refreshRoom = (req, res, next) ->
+    roomManager.refreshTtl req.params.room.id, (err, retval) ->
+      if (err || retval != 1)
+        log.err 'refreshRoom() failed',
+          err: err
+          retval: retval
+          roomId: req.params.room.id
+
+    next()
+
   return (prefix, server) ->
     server.post "#{prefix}/auth/:authToken/rooms",
       apiSecretOrAuthMiddleware,
@@ -140,4 +150,5 @@ module.exports = (options={}) ->
     server.post "/#{prefix}/auth/:authToken/rooms/:roomId/messages",
       apiSecretOrAuthMiddleware,
       fetchRoom,
-      addMessage
+      addMessage,
+      refreshRoom
