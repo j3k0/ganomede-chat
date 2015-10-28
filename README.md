@@ -49,7 +49,7 @@ All "room" related calls require a valid authToken, either:
 
 ## Create a room [POST]
 
-Create a room with a given configuration (or return the one that already exists).
+Create a room with a given configuration (or return the one that already exists and update its ttl).
 
 ### body (application/json)
 
@@ -64,25 +64,24 @@ Create a room with a given configuration (or return the one that already exists)
         "id": "triominos/v1/alice/bob",
         "type": "triominos/v1",
         "users": [ "alice", "bob" ],
-        "messages": [{
-            "timestamp": 1429084002258,
-            "from": "alice",
-            "type": "text",
-            "message": "Hey bob! How are you today?"
-        }]
+        "messages": []
     }
 
 ### design note
 
-Forming the id by concatening `type` and usernames (sorted) is an internal-detail suggestion that should make it easier to find if a room with the given config already exists, it's not mandatory. Client shouldn't rely on that to be true.
-
 Room is gonna expire 60 days after last POST.
+
+Room's id is formed using following code:
+
+``` coffee
+"#{body.type}/#{body.users.sort().join('/')}"
+```
 
 # Room [/chat/v1/auth/:authToken/rooms/:roomId]
 
     + Parameters
         + authToken (string, required) ... Authentication token
-        + roomId (string, required) ... Room identifier
+        + roomId (string, required) ... URL encoded Room ID
 
 ## Retrieve content of a room [GET]
 
@@ -115,7 +114,9 @@ Room is gonna expire 60 days after last POST.
         }]
     }
 
-### response [400] No such room
+### response [404] Not found
+
+No room found with given ID.
 
 ### response [401] Unauthorized
 
@@ -125,11 +126,11 @@ If authToken is invalid or user isn't a participant in the room, and not `API_SE
 
     + Parameters
         + authToken (string, required) ... Authentication token
-        + roomId (string, required) ... Room identifier
+        + roomId (string, required) ... URL encoded Room ID
 
 ## Add a message [POST]
 
-Append a new message to the room. If the number of messages in the room exceeds `MAX_MESSAGES`, the oldest will be discarded.
+Append a new message to the room and updates room's TTL. If the number of messages in the room exceeds `MAX_MESSAGES`, the oldest will be discarded.
 
 ### body (application/json)
 
@@ -145,6 +146,10 @@ Append a new message to the room. If the number of messages in the room exceeds 
 
 If authToken is invalid or user isn't a participant in the room, and not `API_SECRET`.
 
+### response [404] Not Found
+
+No room found with given ID.
+
 ### design note
 
 A notification will be sent to all users in the room (except the sender of the message).
@@ -158,9 +163,5 @@ A notification will be sent to all users in the room (except the sender of the m
             "type": "text",
             "message": "Good thanks, let's play"
         }
+        "push": {…} // optional, will contain whatever is in `req.body.push`.
     }
-
-**push notification**
-
-An optional `push` field can be added in the body of the added message. If set, the content of this field will be added to the notification, but won't be stored in the room's message.
-
