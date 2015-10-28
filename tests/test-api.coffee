@@ -195,7 +195,10 @@ describe 'Chat API', () ->
       callArgs = spies.sendNotification.getCall(0).args
       notification = callArgs[0]
       expect(notification.to).to.be('bob')
-      expect(notification.data).to.eql(lodash.extend({from: 'alice'}, message))
+      expect(notification.data).to.eql(lodash.extend({
+        roomId: samples.rooms[0].id
+        from: 'alice'
+      }, message))
 
     it 'allows access with :authToken being API_SECRET', (done) ->
       go()

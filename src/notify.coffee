@@ -1,10 +1,11 @@
 async = require 'async'
+lodash = require 'lodash'
 helpers = require 'ganomede-helpers'
 config = require '../config'
 
 # Sends notification of a message to everyone but sender.
-notify = (sendFn, roomParticipants, message, push) ->
-  receievers = roomParticipants.filter (username) ->
+notify = (sendFn, room, message, push) ->
+  receievers = room.users.filter (username) ->
     return username != message.from
 
   async.each receievers, (receiver, cb) ->
@@ -12,7 +13,7 @@ notify = (sendFn, roomParticipants, message, push) ->
       from: config.pkg.api
       to: receiver
       type: 'message'
-      data: message
+      data: lodash.extend({roomId: room.id}, message)
     }
 
     if push

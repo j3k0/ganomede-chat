@@ -125,7 +125,7 @@ module.exports = (options={}) ->
           body: req.body
         return next(new restify.InteralServerError)
 
-      notify(sendNotification, req.params.room.users, message, req.body.push)
+      notify(sendNotification, req.params.room, message, req.body.push)
       res.send(200)
       next()
 
