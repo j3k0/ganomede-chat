@@ -32,6 +32,7 @@ describe 'Chat API', () ->
 
   spies =
     refreshTtl: roomManager.refreshTtl = sinon.spy(roomManager.refreshTtl)
+    sendNotification: sinon.spy()
 
   endpoint = (path='/', token='invalid-token') ->
     return "/#{config.routePrefix}/auth/#{token}#{path}"
@@ -67,7 +68,11 @@ describe 'Chat API', () ->
     async.parallel(addRooms, done)
 
     # Setup API
-    chatApi = api({roomManager, authDb})
+    chatApi = api({
+      roomManager,
+      authDb,
+      sendNotification: spies.sendNotification
+    })
     chatApi(config.routePrefix, server)
 
   after (done) ->
@@ -184,6 +189,13 @@ describe 'Chat API', () ->
     it 'refreshes room\'s ttl', () ->
       expect(spies.refreshTtl.callCount).to.be(3)
       expect(spies.refreshTtl.getCall(2).args[0]).to.be(samples.rooms[0].id)
+
+    it 'calls sendNotification() for everyone in the room but sender', () ->
+      expect(spies.sendNotification.callCount).to.be(1)
+      callArgs = spies.sendNotification.getCall(0).args
+      notification = callArgs[0]
+      expect(notification.to).to.be('bob')
+      expect(notification.data).to.eql(lodash.extend({from: 'alice'}, message))
 
     it 'allows access with :authToken being API_SECRET', (done) ->
       go()

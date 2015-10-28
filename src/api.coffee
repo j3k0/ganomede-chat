@@ -8,6 +8,7 @@ config = require '../config'
 RoomManager = require './room-manager'
 Message = require './message'
 log = require './log'
+notify = require './notify'
 
 module.exports = (options={}) ->
   authDb = options.authDb || AuthDB.createClient(
@@ -25,6 +26,8 @@ module.exports = (options={}) ->
     ttlMillis: config.redis.ttlMillis,
     maxSize: config.redis.maxRoomMessages
   })
+
+  sendNotification = options.sendNotification || helpers.Notification.sendFn(1)
 
   authMiddleware = helpers.restify.middlewares.authdb.create({
     authdbClient: authDb
@@ -122,6 +125,7 @@ module.exports = (options={}) ->
           body: req.body
         return next(new restify.InteralServerError)
 
+      notify(sendNotification, req.params.room.users, message, req.body.push)
       res.send(200)
       next()
 
