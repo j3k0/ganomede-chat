@@ -29,7 +29,7 @@ clean:
 
 docker-prepare:
 	@mkdir -p doc
-	docker-compose up -d --no-recreate redisAuth redisNotifications
+	docker-compose up -d --no-recreate redisAuth redisChat
 
 docker-run: docker-prepare
 	docker-compose run --rm --service-ports app make run BUNYAN_LEVEL=${BUNYAN_LEVEL}

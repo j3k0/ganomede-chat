@@ -1,38 +1,24 @@
 app:
     build: .
     volumes:
-     - src:/home/app/code/src
-     - tests:/home/app/code/tests
-     - doc:/home/app/code/doc
+     - ./src:/home/app/code/src
+     - ./tests:/home/app/code/tests
+     - ./doc:/home/app/code/doc
     command: make run
     ports:
      - "8000:8000"
     links:
      - redisAuth:redis_auth
-     - redisNotifications:redis_notifications
-     - redisOnlineList:redis_onlinelist
-     - redisPush:redis_pushapi
+     - redisChat:redis_chat
     environment:
-     - "TESTUSER_AUTH_TOKEN=DFDE4BBE-1F43-4EF0-9642-775C05336507"
      - "API_SECRET=BE295A7D-C10F-4448-9198-D5AB142E7546"
-     - "ONLINE_LIST_SIZE=50"
 
 redisAuth:
     image: tutum/redis:latest
     environment:
      - "REDIS_PASS=**None**"
 
-redisNotifications:
-    image: tutum/redis:latest
-    environment:
-     - "REDIS_PASS=**None**"
-
-redisOnlineList:
-    image: tutum/redis:latest
-    environment:
-     - "REDIS_PASS=**None**"
-
-redisPush:
+redisChat:
     image: tutum/redis:latest
     environment:
      - "REDIS_PASS=**None**"
