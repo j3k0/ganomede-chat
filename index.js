@@ -18,6 +18,7 @@ if (cluster.isMaster) {
     // master
     log.info("starting up...", {env: process.env, config: config});
     cluster.fork();
+    cluster.fork();
     cluster.on("disconnect", function(/*worker*/) {
         log.error("disconnect!");
         cluster.fork();
