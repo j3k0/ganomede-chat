@@ -165,3 +165,25 @@ A notification will be sent to all users in the room (except the sender of the m
         }
         "push": {…} // optional, will contain whatever is in `req.body.push`.
     }
+
+# System Messages [/chat/v1/auth/:apiSecret/system-messages]
+
+## Add a message [POST]
+
+Join a room, append a new message and updates its TTL.
+If the number of messages in the room exceeds `MAX_MESSAGES`, the oldest will be discarded.
+
+### body (application/json)
+
+    {
+        "type": "triominos/v1",
+        "users": [ "alice", "bob" ]
+        "timestamp": 1429084016939,
+        "message": "ALICE_DISCONNECTED"
+    }
+
+### response [200] OK
+
+### design note
+
+Response codes and design notes as for the /messages entrypoint.

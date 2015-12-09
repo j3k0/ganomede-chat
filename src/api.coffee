@@ -111,8 +111,10 @@ module.exports = (options={}) ->
     res.json(reply)
     next()
 
-  addMessage = (req, res, next) ->
+  addMessage = (forcedType) -> (req, res, next) ->
     try
+      if (forcedType)
+        req.body.type = forcedType
       username = if req.params.apiSecret then '$$' else req.params.user.username
       message = new Message(username, req.body)
     catch e
@@ -154,5 +156,11 @@ module.exports = (options={}) ->
     server.post "/#{prefix}/auth/:authToken/rooms/:roomId/messages",
       apiSecretOrAuthMiddleware,
       fetchRoom,
-      addMessage,
+      addMessage(),
+      refreshRoom
+
+    server.post "/#{prefix}/auth/:authToken/system-messages",
+      apiSecretOrAuthMiddleware,
+      createRoom,
+      addMessage('event'),
       refreshRoom

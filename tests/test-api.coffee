@@ -30,10 +30,6 @@ describe 'Chat API', () ->
     maxSize: config.redis.maxRoomMessages
   })
 
-  spies =
-    refreshTtl: roomManager.refreshTtl = sinon.spy(roomManager.refreshTtl)
-    sendNotification: sinon.spy()
-
   endpoint = (path='/', token='invalid-token') ->
     return "/#{config.routePrefix}/auth/#{token}#{path}"
 
@@ -48,11 +44,28 @@ describe 'Chat API', () ->
   messagesEndpoint = (username, roomId) ->
     return roomsEndpoint(username, roomId) + '/messages'
 
+  systemMessagesEndpoint = (token) ->
+    return endpoint('/system-messages', token)
+
+  roomManager.refreshTtl = sinon.spy(roomManager.refreshTtl)
+  spies =
+    refreshTtl: roomManager.refreshTtl
+    sendNotification: sinon.spy()
+
   before (done) ->
+    #
     # Create users
     process.env.API_SECRET = 'api-secret'
     for own username, account of samples.users
       authDb.addAccount(account.token, account)
+
+    # Setup API
+    chatApi = api({
+      roomManager,
+      authDb,
+      sendNotification: spies.sendNotification
+    })
+    chatApi(config.routePrefix, server)
 
     # Create some rooms and messages
     addRooms = samples.rooms.map (roomInfo, idx) ->
@@ -66,14 +79,6 @@ describe 'Chat API', () ->
           async.series(addMessages, cb)
 
     async.parallel(addRooms, done)
-
-    # Setup API
-    chatApi = api({
-      roomManager,
-      authDb,
-      sendNotification: spies.sendNotification
-    })
-    chatApi(config.routePrefix, server)
 
   after (done) ->
     redisClient.keys "#{prefix}:*", (err, keys) ->
@@ -132,7 +137,7 @@ describe 'Chat API', () ->
         }, done)
 
     it 'sends room info, if it already exists', (done) ->
-    # Calls .refreshTtl() on room[0]
+      # Calls .refreshTtl() on room[0]
       go()
         .post(roomsEndpoint('bob'))
         .send(samples.rooms[0])
@@ -145,7 +150,7 @@ describe 'Chat API', () ->
       expect(spies.refreshTtl.getCall(0).args[0]).to.be(samples.rooms[0].id)
 
     it 'allows access with :authToken being API_SECRET', (done) ->
-    # Calls .refreshTtl() on room[1]
+      # Calls .refreshTtl() on room[1]
       go()
         .post(roomsEndpoint(process.env.API_SECRET))
         .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
@@ -157,6 +162,55 @@ describe 'Chat API', () ->
         .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
         .expect(401, done)
 
+  messageChecker = (message, redisKey) ->
+    expectedJson = (sender) ->
+      return lodash.extend({from: sender}, message)
+
+    (sender, cb) ->
+      redisClient.lindex redisKey, 0, (err, json) ->
+        expect(err).to.be(null)
+        expect(JSON.parse(json)).to.eql(expectedJson(sender))
+        cb()
+
+  describe 'POST /system-messages', () ->
+    message =
+      type: 'event',
+      timestamp: Date.now()
+      message: 'system_message'
+    payload = lodash.extend {}, message,
+      type: 'game/v1',
+      users: [ 'alice', 'bob' ],
+    roomId = samples.rooms[0].id
+    redisKey = "#{prefix}:#{roomId}:messages"
+
+    checkMessage = messageChecker message, redisKey
+
+    it 'adds message to a room', (done) ->
+      go()
+        .post systemMessagesEndpoint process.env.API_SECRET
+        .send payload
+        .expect 200
+        .end (err, res) ->
+          expect(err).to.be null
+          checkMessage '$$', done
+
+    it 'refreshes room\'s ttl', () ->
+      expect(spies.refreshTtl.callCount).to.be(4)
+      expect(spies.refreshTtl.getCall(3).args[0]).to.be(samples.rooms[0].id)
+
+    it 'calls sendNotification() for everyone in the room', () ->
+      expect(spies.sendNotification.callCount).to.be(2)
+      expectCall = (index, username) ->
+        callArgs = spies.sendNotification.getCall(index).args
+        notification = callArgs[0]
+        expect(notification.to).to.be(username)
+        expect(notification.data).to.eql(lodash.extend({
+          roomId: samples.rooms[0].id
+          from: '$$'
+        }, message))
+      expectCall 0, 'alice'
+      expectCall 1, 'bob'
+
   describe 'POST /<auth>/rooms/:roomId/messages', () ->
     message =
       timestamp: Date.now()
@@ -166,18 +220,10 @@ describe 'Chat API', () ->
     roomId = samples.rooms[0].id
     redisKey = "#{prefix}:#{roomId}:messages"
 
-    expectedJson = (sender) ->
-      return lodash.extend({from: sender}, message)
-
-    checkMessage = (sender, cb) ->
-      expected = lodash.extend({from: sender}, message)
-      redisClient.lindex redisKey, 0, (err, json) ->
-        expect(err).to.be(null)
-        expect(JSON.parse(json)).to.eql(expectedJson(sender))
-        cb()
+    checkMessage = messageChecker message, redisKey
 
     it 'adds message to a room', (done) ->
-    # Calls .refreshTtl() on room[0]
+      # Calls .refreshTtl() on room[0]
       go()
         .post(messagesEndpoint('alice', roomId))
         .send(message)
@@ -187,18 +233,23 @@ describe 'Chat API', () ->
           checkMessage('alice', done)
 
     it 'refreshes room\'s ttl', () ->
-      expect(spies.refreshTtl.callCount).to.be(3)
-      expect(spies.refreshTtl.getCall(2).args[0]).to.be(samples.rooms[0].id)
+      expect(spies.refreshTtl.callCount).to.be(5)
+      expect(spies.refreshTtl.getCall(4).args[0]).to.be(samples.rooms[0].id)
 
-    it 'calls sendNotification() for everyone in the room but sender', () ->
-      expect(spies.sendNotification.callCount).to.be(1)
-      callArgs = spies.sendNotification.getCall(0).args
-      notification = callArgs[0]
-      expect(notification.to).to.be('bob')
-      expect(notification.data).to.eql(lodash.extend({
-        roomId: samples.rooms[0].id
-        from: 'alice'
-      }, message))
+    it 'calls sendNotification() for everyone in the room but sender', (done) ->
+      go()
+        .post(messagesEndpoint('alice', roomId))
+        .send(message)
+        .end (err, res) ->
+          expect(spies.sendNotification.callCount).to.be(4)
+          callArgs = spies.sendNotification.getCall(3).args
+          notification = callArgs[0]
+          expect(notification.to).to.be('bob')
+          expect(notification.data).to.eql(lodash.extend({
+            roomId: samples.rooms[0].id
+            from: 'alice'
+          }, message))
+          done()
 
     it 'allows access with :authToken being API_SECRET', (done) ->
       go()
