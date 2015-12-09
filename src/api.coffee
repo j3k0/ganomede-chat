@@ -40,6 +40,11 @@ module.exports = (options={}) ->
 
     authMiddleware(req, res, next)
 
+  requireSecret = (req, res, next) ->
+    unless req.params.apiSecret
+      return next(new restify.UnauthorizedError)
+    next()
+
   fetchRoom = (req, res, next) ->
     roomManager.findById req.params.roomId, (err, room) ->
       if (err)
@@ -164,6 +169,7 @@ module.exports = (options={}) ->
 
     server.post "/#{prefix}/auth/:authToken/system-messages",
       apiSecretOrAuthMiddleware,
+      requireSecret,
       createRoom(false),
       addMessage('event'),
       refreshRoom
