@@ -69,7 +69,7 @@ module.exports = (options={}) ->
       req.params.messages = messages
       next()
 
-  createRoom = (req, res, next) ->
+  createRoom = (fetchMessages) -> (req, res, next) ->
     roomManager.create req.body || {}, (err, room) ->
       if (err)
         if (err.message == RoomManager.errors.INVALID_CREATION_OPTIONS)
@@ -81,8 +81,11 @@ module.exports = (options={}) ->
           return async.waterfall [
             roomManager.findById.bind(roomManager, id),
             (room, cb) ->
-              room.messages (err, messages) ->
-                cb(err, room, messages)
+              if (fetchMessages)
+                room.messages (err, messages) ->
+                  cb(err, room, messages)
+              else
+                cb(null, room, [])
           ], (err, room, messages) ->
             if (err)
               log.error 'createRoom() failed to retrieve existing room',
@@ -144,7 +147,7 @@ module.exports = (options={}) ->
   return (prefix, server) ->
     server.post "#{prefix}/auth/:authToken/rooms",
       apiSecretOrAuthMiddleware,
-      createRoom,
+      createRoom(true),
       sendRoomJson
 
     server.get "/#{prefix}/auth/:authToken/rooms/:roomId",
@@ -161,6 +164,6 @@ module.exports = (options={}) ->
 
     server.post "/#{prefix}/auth/:authToken/system-messages",
       apiSecretOrAuthMiddleware,
-      createRoom,
+      createRoom(false),
       addMessage('event'),
       refreshRoom
