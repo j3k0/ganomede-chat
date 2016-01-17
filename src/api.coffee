@@ -40,6 +40,11 @@ module.exports = (options={}) ->
 
     authMiddleware(req, res, next)
 
+  requireSecret = (req, res, next) ->
+    unless req.params.apiSecret
+      return next(new restify.UnauthorizedError)
+    next()
+
   fetchRoom = (req, res, next) ->
     roomManager.findById req.params.roomId, (err, room) ->
       if (err)
@@ -69,7 +74,7 @@ module.exports = (options={}) ->
       req.params.messages = messages
       next()
 
-  createRoom = (req, res, next) ->
+  createRoom = (fetchMessages) -> (req, res, next) ->
     roomManager.create req.body || {}, (err, room) ->
       if (err)
         if (err.message == RoomManager.errors.INVALID_CREATION_OPTIONS)
@@ -81,8 +86,11 @@ module.exports = (options={}) ->
           return async.waterfall [
             roomManager.findById.bind(roomManager, id),
             (room, cb) ->
-              room.messages (err, messages) ->
-                cb(err, room, messages)
+              if (fetchMessages)
+                room.messages (err, messages) ->
+                  cb(err, room, messages)
+              else
+                cb(null, room, [])
           ], (err, room, messages) ->
             if (err)
               log.error 'createRoom() failed to retrieve existing room',
@@ -111,8 +119,10 @@ module.exports = (options={}) ->
     res.json(reply)
     next()
 
-  addMessage = (req, res, next) ->
+  addMessage = (forcedType) -> (req, res, next) ->
     try
+      if (forcedType)
+        req.body.type = forcedType
       username = if req.params.apiSecret then '$$' else req.params.user.username
       message = new Message(username, req.body)
     catch e
@@ -142,7 +152,7 @@ module.exports = (options={}) ->
   return (prefix, server) ->
     server.post "#{prefix}/auth/:authToken/rooms",
       apiSecretOrAuthMiddleware,
-      createRoom,
+      createRoom(true),
       sendRoomJson
 
     server.get "/#{prefix}/auth/:authToken/rooms/:roomId",
@@ -154,5 +164,12 @@ module.exports = (options={}) ->
     server.post "/#{prefix}/auth/:authToken/rooms/:roomId/messages",
       apiSecretOrAuthMiddleware,
       fetchRoom,
-      addMessage,
+      addMessage(),
+      refreshRoom
+
+    server.post "/#{prefix}/auth/:authToken/system-messages",
+      apiSecretOrAuthMiddleware,
+      requireSecret,
+      createRoom(false),
+      addMessage('event'),
       refreshRoom
