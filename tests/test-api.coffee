@@ -162,6 +162,12 @@ describe 'Chat API', () ->
         .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
         .expect(401, done)
 
+    it '401 if user not part of the room', (done) ->
+      go()
+        .post(roomsEndpoint('harry'))
+        .send(samples.rooms[0])
+        .expect(401, done)
+
   messageChecker = (message, redisKey) ->
     expectedJson = (sender) ->
       return lodash.extend({from: sender}, message)

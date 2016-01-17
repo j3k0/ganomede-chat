@@ -1,6 +1,7 @@
 exports.users =
   alice: {token: 'alice-token', username: 'alice'}
   bob: {token: 'bob-token', username: 'bob'}
+  harry: {token: 'harry-token', username: 'harry'}
 
 exports.rooms = [
   id: 'game/v1/alice/bob'
