@@ -75,6 +75,9 @@ module.exports = (options={}) ->
       next()
 
   createRoom = (fetchMessages) -> (req, res, next) ->
+    if req.params.authToken != process.env.API_SECRET
+      unless req.body.users.indexOf(req.params.user.username) >= 0
+        return next(new restify.UnauthorizedError)
     roomManager.create req.body || {}, (err, room) ->
       if (err)
         if (err.message == RoomManager.errors.INVALID_CREATION_OPTIONS)
