@@ -2,6 +2,7 @@ async = require 'async'
 lodash = require 'lodash'
 helpers = require 'ganomede-helpers'
 config = require '../config'
+log = require './log'
 
 # Sends notification of a message to everyone but sender.
 notify = (sendFn, room, message, push) ->
