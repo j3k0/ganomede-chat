@@ -1,6 +1,6 @@
 {
   "name": "chat",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "api": "chat/v1",
   "description": "chat micro service",
   "private": true,
