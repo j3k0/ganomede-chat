@@ -24,7 +24,7 @@ notify = (sendFn, room, message, push) ->
 
     sendFn notification, (err, response) ->
       if (err)
-        log.err 'notify failed',
+        log.error 'notify failed',
           err: err,
           notification: notification
           response: response
