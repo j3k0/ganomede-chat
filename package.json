@@ -17,7 +17,7 @@
     "bunyan": "^1.2.3",
     "coffee-script": "^1.10.0",
     "forever": "^0.15.1",
-    "ganomede-helpers": "^0.4.1",
+    "ganomede-helpers": "^1.0.1",
     "lodash": "^3.10.1",
     "newrelic": "^1.20.2",
     "redis": "^2.2.5",
