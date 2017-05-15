@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "make test",
-    "testw": "nodemon --ext js,coffee --watch index.js --watch config.js --watch newrelic.js --watch src/ --watch test/ -x 'npm test'"
+    "testw": "nodemon --ext js,coffee --watch index.js --watch config.js --watch newrelic.js --watch src/ --watch tests/ -x 'npm test'"
   },
   "author": "Jean-Christophe Hoelt <hoelt@fovea.cc>",
   "license": "Private",
