@@ -25,9 +25,8 @@ if (cluster.isMaster) {
     });
 }
 else {
-    var helpers = require('ganomede-helpers');
     var main = require("./src/main");
-    var server = helpers.restify.createServer();
+    var server = require('./src/server')();
 
     // Intitialize backend, add routes
     main(config.routePrefix, server);
