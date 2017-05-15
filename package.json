@@ -7,6 +7,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "lint": "make check",
     "test": "make test"
   },
   "author": "Jean-Christophe Hoelt <hoelt@fovea.cc>",
