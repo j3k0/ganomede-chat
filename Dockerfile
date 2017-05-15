@@ -1,4 +1,4 @@
-FROM node:5.0.0
+FROM node:6.10.3
 EXPOSE 8000
 MAINTAINER Jean-Christophe Hoelt <hoelt@fovea.cc>
 RUN useradd app -d /home/app
