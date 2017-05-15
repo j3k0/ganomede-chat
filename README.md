@@ -30,6 +30,10 @@ Variables available for service configuration (see [config.js](/config.js)):
  * `MAX_MESSAGES` - Max number of messages stored in a room (default 100)
  * `API_SECRET` - Give access to private APIs
  * `NODE_ENV` — Antything except `production` means that app is running in development (debug) mode
+ * Optional link to [users service](https://github.com/j3k0/ganomede-users)
+   - `USERS_PORT_8080_TCP_ADDR` — address
+   - `USERS_PORT_8080_TCP_PORT`
+   - If any of these options are missing, no ban check will be performed — every user account will be considered to be in good standing (no bans)
 
 AuthDB
 ------
@@ -66,6 +70,10 @@ Create a room with a given configuration (or return the one that already exists 
         "users": [ "alice", "bob" ],
         "messages": []
     }
+
+### response [403] Forbidden
+
+When linked to users service, will perform ban check. Banned `:username`s will receive 403 error no matter validity of a token.
 
 ### design note
 
@@ -145,6 +153,10 @@ Append a new message to the room and updates room's TTL. If the number of messag
 ### response [401] Unauthorized
 
 If authToken is invalid or user isn't a participant in the room, and not `API_SECRET`.
+
+### response [403] Forbidden
+
+When linked to users service, will perform ban check. Banned `:username`s will receive 403 error no matter validity of a token.
 
 ### response [404] Not Found
 
