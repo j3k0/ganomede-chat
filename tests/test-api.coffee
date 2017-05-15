@@ -10,6 +10,7 @@ api = require '../src/api'
 config = require '../config'
 samples = require './samples'
 fakeAuthdb = require './fake-authdb'
+fakeBansClient = require './fake-bans-client'
 
 describe 'Chat API', () ->
   server = helpers.restify.createServer()
@@ -29,6 +30,8 @@ describe 'Chat API', () ->
     ttlMillis: config.redis.ttlMillis,
     maxSize: config.redis.maxRoomMessages
   })
+
+  bansClient = fakeBansClient()
 
   endpoint = (path='/', token='invalid-token') ->
     return "/#{config.routePrefix}/auth/#{token}#{path}"
@@ -63,7 +66,8 @@ describe 'Chat API', () ->
     chatApi = api({
       roomManager,
       authDb,
-      sendNotification: spies.sendNotification
+      sendNotification: spies.sendNotification,
+      bansClient
     })
     chatApi(config.routePrefix, server)
 
@@ -167,6 +171,18 @@ describe 'Chat API', () ->
         .post(roomsEndpoint('harry'))
         .send(samples.rooms[0])
         .expect(401, done)
+
+    it '403 if user is banned', (done) ->
+      go()
+        .post(roomsEndpoint('banned-joe'))
+        .send(samples.rooms[0])
+        .expect(403)
+        .end (err) ->
+          expect(err).to.be(null)
+          expect(bansClient._callArgs[bansClient._callArgs.length - 1])
+            .to.be('banned-joe')
+          expect(bansClient._results).to.have.property('banned-joe', true)
+          done()
 
   messageChecker = (message, redisKey) ->
     expectedJson = (sender) ->
@@ -280,3 +296,14 @@ describe 'Chat API', () ->
       go()
         .post(messagesEndpoint('alice', 'non-existent-room'))
         .expect(404, done)
+
+    it '403 when user is banned', (done) ->
+      go()
+        .post(messagesEndpoint('banned-joe', roomId))
+        .expect(403)
+        .end (err) ->
+          expect(err).to.be(null)
+          expect(bansClient._callArgs[bansClient._callArgs.length - 1])
+            .to.be('banned-joe')
+          expect(bansClient._results).to.have.property('banned-joe', true)
+          done()

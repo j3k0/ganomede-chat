@@ -33,6 +33,10 @@ module.exports = (options={}) ->
     authdbClient: authDb
   })
 
+  bansClient = options.bansClient
+  unless options.bansClient
+    throw new TypeError('Please provide options.bansClient')
+
   apiSecretOrAuthMiddleware = (req, res, next) ->
     if req.params.authToken == process.env.API_SECRET
       req.params.apiSecret = true
@@ -44,6 +48,23 @@ module.exports = (options={}) ->
     unless req.params.apiSecret
       return next(new restify.UnauthorizedError)
     next()
+
+  checkIfBanned = (req, res, next) ->
+    if (req.params.apiSecret == true)
+      return next()
+
+    username = req.params.user.username
+
+    bansClient.isBanned username, (err, banned) ->
+      if (err)
+        log.error({err, username}, 'Failed to check ban')
+        return next(new restify.InteralServerError())
+
+      if (banned)
+        log.info({username}, 'User banned')
+        return next(new restify.ForbiddenError())
+
+      next()
 
   fetchRoom = (req, res, next) ->
     roomManager.findById req.params.roomId, (err, room) ->
@@ -153,23 +174,29 @@ module.exports = (options={}) ->
     next()
 
   return (prefix, server) ->
+    # create room
     server.post "#{prefix}/auth/:authToken/rooms",
       apiSecretOrAuthMiddleware,
+      checkIfBanned,
       createRoom(true),
       sendRoomJson
 
+    # read messages
     server.get "/#{prefix}/auth/:authToken/rooms/:roomId",
       apiSecretOrAuthMiddleware,
       fetchRoom,
       fetchMessages,
       sendRoomJson
 
+    # add message
     server.post "/#{prefix}/auth/:authToken/rooms/:roomId/messages",
       apiSecretOrAuthMiddleware,
+      checkIfBanned,
       fetchRoom,
       addMessage(),
       refreshRoom
 
+    # add service message
     server.post "/#{prefix}/auth/:authToken/system-messages",
       apiSecretOrAuthMiddleware,
       requireSecret,
