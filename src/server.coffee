@@ -17,14 +17,15 @@ module.exports = (options={}) ->
   shouldLogResponse = (res) ->
     (res && res.statusCode >= 500)
 
-  filteredLogger = (errorsOnly, logger) -> (req, res, next) ->
-    logError = errorsOnly && shouldLogResponse(res)
-    logInfo = !errorsOnly && (
-      shouldLogRequest(req) || shouldLogResponse(res))
-    if logError || logInfo
-      logger(req, res)
-    if next && typeof next == 'function'
-      next()
+  filteredLogger = (errorsOnly, logger) ->
+    logger_mw = (req, res, next) ->
+      logError = errorsOnly && shouldLogResponse(res)
+      logInfo = !errorsOnly && (
+        shouldLogRequest(req) || shouldLogResponse(res))
+      if logError || logInfo
+        logger(req, res)
+      if next && typeof next == 'function'
+        next()
 
   # Log incoming requests
   requestLogger = filteredLogger(false, (req) ->
@@ -41,5 +42,9 @@ module.exports = (options={}) ->
     req.log = req.log.child({req_id: req.id()})
     next()
   server.use(setRequestId)
+
+  # Send audit statistics
+  sendAuditStats = require './send-audit-stats'
+  server.on 'after', sendAuditStats
 
   return server

@@ -1,6 +1,6 @@
 {
   "name": "chat",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "api": "chat/v1",
   "description": "chat micro service",
   "private": true,
@@ -22,6 +22,7 @@
     "ganomede-helpers": "^1.0.1",
     "lodash": "^3.10.1",
     "newrelic": "^1.20.2",
+    "node-statsd": "^0.1.1",
     "redis": "^2.2.5",
     "restify": "^4.0.3"
   },
@@ -44,7 +45,7 @@
   "devDependencies": {
     "blanket": "^1.1.6",
     "coffeelint": "^1.13.0",
-    "eslint": "^1.7.2",
+    "eslint": "^4.3.0",
     "expect.js": "^0.3.1",
     "mocha": "^2.3.3",
     "nodemon": "^1.11.0",
