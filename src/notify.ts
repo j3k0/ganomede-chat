@@ -1,20 +1,19 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
 import async from 'async';
 import lodash from 'lodash';
-import helpers from 'ganomede-helpers';
-import config from '../config';
+import config from './config';
 import log from './log';
+import { Room } from './room-manager';
+import Message from './message';
+import { NotificationPayload, Notification, SendNotificationFunction } from './helpers/send-notification';
 
 // Sends notification of a message to everyone but sender.
-const notify = function(sendFn, room, message, push) {
-  const receievers = room.users.filter(username => username !== message.from);
+const notify = function(sendFn: SendNotificationFunction, room: Room, message: Message, push?: any) {
 
-  return async.each(receievers, function(receiver, cb) {
-    const options = {
+  // TODO: also remove blocked users
+  const receivers: string[] = room.users.filter((username: string) => username !== message.from);
+
+  return async.each(receivers, function(receiver, cb) {
+    const options: Notification = {
       from: config.pkg.api,
       to: receiver,
       type: 'message',
@@ -25,19 +24,17 @@ const notify = function(sendFn, room, message, push) {
       options.push = push;
     }
 
-    const notification = new helpers.Notification(options);
+    const notification = new NotificationPayload(options);
 
     return sendFn(notification, function(err, response) {
       if (err) {
-        log.error('notify failed', {
+        log.warn({
           err,
           notification,
           response
-        }
-        );
+        }, 'notify failed');
       }
-
-      return cb();
+      cb();
     });
   });
 };

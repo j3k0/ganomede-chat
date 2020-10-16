@@ -7,15 +7,28 @@
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
 import RedisCappedList from './redis-capped-list';
+import Message, { MessageList } from './message';
+import { RedisClient } from 'redis';
 
-class Room {
-  constructor(info, messageList) {
-    for (let key of Object.keys(info || {})) {
-      const val = info[key];
-      this[key] = val;
+export interface RoomInfo {
+  id?: string;
+  type: string;
+  users: string[];
+}
+
+export class Room implements RoomInfo {
+  id: string = '';
+  type: string = '';
+  users: string[] = [];
+  messageList?: MessageList;
+
+  constructor(info: RoomInfo, messageList?: MessageList) {
+
+    for (let key of Object.keys(info)) {
+      this[key] = info[key];
     }
 
-    if (!this.id) {
+    if (!info.id) {
       this.id = Room.id(info);
     }
 
@@ -26,39 +39,47 @@ class Room {
     }
   }
 
-  _setMessageList(list) {
-    return Object.defineProperty(this, 'messageList', {value: list});
+  _setMessageList(list: MessageList) {
+    return Object.defineProperty(this, 'messageList', { value: list });
   }
 
   messages(callback) {
-    return this.messageList.items(callback);
+    return this.messageList?.items(callback);
   }
 
-  addMessage(message, callback) {
-    return this.messageList.add(message, callback);
+  addMessage(message: Message, callback: (err: Error | null, nMessages?: number) => void) {
+    return this.messageList?.add(message, callback);
   }
 
   hasUser(username) {
     return -1 !== this.users.indexOf(username);
   }
 
-  static id(info) {
-    return `${info.type}/${info.users.sort().join('/')}`;
+  static id(info: RoomInfo): string {
+    return `${info.type}/${info.users?.sort().join('/')}`;
   }
 }
 
-class RoomManager {
-  static initClass() {
-  
-    this.errors = {
-      ROOM_EXISTS: 'ROOM_EXISTS',
-      INVALID_CREATION_OPTIONS: 'INVALID_CREATION_OPTIONS'
-    };
-  
-    this.Room = Room;
-  }
-  constructor(options) {
-    if (options == null) { options = {}; }
+export interface RoomManagerOptions {
+  redis: RedisClient;
+  prefix: string;
+  ttlMillis: number;
+  maxSize: number;
+}
+
+export class RoomManager {
+
+  redis: RedisClient;
+  prefix: string;
+  ttlMillis: number;
+  maxSize: number;
+
+  static errors = {
+    ROOM_EXISTS: 'ROOM_EXISTS',
+    INVALID_CREATION_OPTIONS: 'INVALID_CREATION_OPTIONS'
+  };
+
+  constructor(options: RoomManagerOptions) {
     this.redis = options.redis;
     this.prefix = options.prefix;
     this.ttlMillis = options.ttlMillis;
@@ -86,15 +107,15 @@ class RoomManager {
   // Redis Keys
   //
 
-  key(...keys) {
+  key(...keys: string[]): string {
     return `${this.prefix}:${keys.join(':')}`;
   }
 
-  messagesKey(roomId) {
+  messagesKey(roomId: string): string {
     return this.key(roomId, 'messages');
   }
 
-  messageList(roomId) {
+  messageList(roomId: string): MessageList {
     return new RedisCappedList({
       redis: this.redis,
       maxSize: this.maxSize,
@@ -103,7 +124,7 @@ class RoomManager {
   }
 
   create(options, callback) {
-    const tickError = function(message) {
+    const tickError = function (message) {
       const err = new Error(message);
       return process.nextTick(callback.bind(null, err));
     };
@@ -119,18 +140,18 @@ class RoomManager {
     const room = new Room(options);
 
     return this.redis.set(this.key(room.id), JSON.stringify(room), 'PX', this.ttlMillis, 'NX',
-    (err, created) => {
-      if (err) {
-        return callback(err);
-      }
+      (err, created) => {
+        if (err) {
+          return callback(err);
+        }
 
-      if (!created) {
-        return callback(new Error(RoomManager.errors.ROOM_EXISTS));
-      }
+        if (!created) {
+          return callback(new Error(RoomManager.errors.ROOM_EXISTS));
+        }
 
-      room._setMessageList(this.messageList(room.id));
-      return callback(null, room);
-    });
+        room._setMessageList(this.messageList(room.id));
+        return callback(null, room);
+      });
   }
 
   findById(roomId, callback) {
@@ -153,6 +174,5 @@ class RoomManager {
     return this.redis.pexpire(this.key(roomId), this.ttlMillis, callback);
   }
 }
-RoomManager.initClass();
 
 export default RoomManager;

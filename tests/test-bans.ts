@@ -20,7 +20,7 @@ describe('bans', function() {
         }
       };
 
-      const client = bans.createClient({}, log);
+      const client = bans.createClient({}, log as any);
       assert(client instanceof bans.FakeClient);
       return assert(log.warnCallCount === 1);
     });
@@ -70,21 +70,21 @@ describe('bans', function() {
       const client = new bans.RealClient('domain.tld', 999, {});
       client.api = fakeApi(true);
 
-      return client.isBanned('alice', function(err, banned) {
+      client.isBanned('alice', function(err, banned) {
         assert(err === null);
         assert(banned === true);
-        return done();
+        done();
       });
     });
 
-    return it('returns false for non-existing bans', function() {
+    it('returns false for non-existing bans', function(done) {
       const client = new bans.RealClient('domain.tld', 999, {});
       client.api = fakeApi(false);
 
-      return client.isBanned('alice', function(err, banned) {
+      client.isBanned('alice', function(err, banned) {
         assert(err === null);
         assert(banned === false);
-        return done();
+        done();
       });
     });
   });

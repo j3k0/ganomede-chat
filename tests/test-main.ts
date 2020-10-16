@@ -1,17 +1,17 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
+import restify from 'restify';
+import fakeredis from 'fakeredis';
 import supertest from 'supertest';
 import expect from 'expect.js';
-import helpers from 'ganomede-helpers';
 import main from '../src/main';
-import config from '../config';
+import config from '../src/config';
+import fakeAuthdb from './fake-authdb';
+fakeredis.fast = true;
 
 describe('Main', function() {
-  const server = helpers.restify.createServer();
+  const server = restify.createServer();
+  server.use(restify.plugins.queryParser());
+  server.use(restify.plugins.bodyParser());
+  server.use(restify.plugins.gzipResponse())
   const go = supertest.bind(null, server);
 
   const endpoint = function(path) {
@@ -19,7 +19,12 @@ describe('Main', function() {
     return `/${config.routePrefix}${path}`;
   };
 
-  before(() => main(config.routePrefix, server));
+  before(() => {
+    main(config.routePrefix, server, {
+      redisClient: fakeredis.createClient(),
+      authDb: fakeAuthdb.createClient()
+    });
+  });
 
   after(done => server.close(done));
 

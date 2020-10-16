@@ -3,12 +3,21 @@
  * DS102: Remove unnecessary code created because of implicit returns
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import restify from 'restify';
+import restifyClient from 'restify-clients';
+import Logger from 'bunyan';
+import logMod from './log';
 
-class RealClient {
+export interface BansClient {
+  isBanned(username: string, callback: (err: Error | null, banned: boolean) => void): void;
+}
+
+export class RealClient implements BansClient {
+  api: any;
+  log: Logger;
+
   constructor(addr, port, log) {
     const url = `http://${addr}:${port}`;
-    this.api = restify.createJsonClient({url});
+    this.api = restifyClient.createJsonClient({url});
     this.log = log;
   }
 
@@ -30,14 +39,14 @@ class RealClient {
 
 // When users service is not configured,
 // consider every account to be in good standing (not banned).
-class FakeClient {
+export class FakeClient {
   isBanned(username, callback) {
     const fn = () => callback(null, false);
     return process.nextTick(fn);
   }
 }
 
-const createClient = function(env, log) {
+export function createClient(env, log = logMod) {
   const addr = env.USERS_PORT_8080_TCP_ADDR || null;
   const port = env.USERS_PORT_8080_TCP_PORT || null;
   const exists = addr && port;

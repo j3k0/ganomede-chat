@@ -1,11 +1,14 @@
 'use strict';
 
 require('coffee-script/register');
+import pk = require("../package.json");
+import main from './main';
+import serverMod from './server';
+
 
 // Use New Relic if LICENSE_KEY has been specified.
 if (process.env.NEW_RELIC_LICENSE_KEY) {
   if (!process.env.NEW_RELIC_APP_NAME) {
-    const pk = require('./package.json');
     process.env.NEW_RELIC_APP_NAME = pk.api;
   }
   require('newrelic');
@@ -27,8 +30,9 @@ if (cluster.isMaster) {
   });
 }
 else {
-  const main = require('./src/main');
-  const server = require('./src/server')();
+
+  // Create http server
+  const server = serverMod();
 
   // Intitialize backend, add routes
   main(config.routePrefix, server);

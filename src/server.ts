@@ -1,31 +1,23 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
 import restify from 'restify';
 import log from './log';
 import pkg from '../package.json';
 
-export default function(options) {
-  if (options == null) { options = {}; }
+export default function() {
   const server = restify.createServer({
     handleUncaughtExceptions: true,
     log
   });
 
-  server.use(restify.queryParser());
-  server.use(restify.bodyParser());
-  server.use(restify.gzipResponse());
+  server.use(restify.plugins.queryParser());
+  server.use(restify.plugins.bodyParser());
+  server.use(restify.plugins.gzipResponse());
 
   const shouldLogRequest = req => req.url.indexOf(`/${pkg.api}/ping/_health_check`) < 0;
 
   const shouldLogResponse = res => res && (res.statusCode >= 500);
 
   const filteredLogger = function(errorsOnly, logger) {
-    let logger_mw;
-    return logger_mw = function(req, res, next) {
+    return function loggerMw (req, res, next) {
       const logError = errorsOnly && shouldLogResponse(res);
       const logInfo = !errorsOnly && (
         shouldLogRequest(req) || shouldLogResponse(res));
@@ -44,7 +36,11 @@ export default function(options) {
 
   // Audit requests at completion
   server.on('after', filteredLogger(process.env.NODE_ENV === 'production',
-    restify.auditLogger({log, body: true})));
+    restify.plugins.auditLogger({
+      log,
+      body: true,
+      event: 'after'
+  })));
 
   // Automatically add a request-id to the response
   const setRequestId = function(req, res, next) {

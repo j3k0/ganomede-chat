@@ -1,19 +1,18 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
-import helpers from 'ganomede-helpers';
-import api from './api';
+import api, { ApiOptions } from './api';
 import log from './log';
 import bans from './bans';
+import aboutApi from './about-api';
+import pingApi from './ping-api';
+import { Server } from 'restify';
 
-export default function(prefix, server) {
+export default function(prefix: string, server: Server, options?: Partial<ApiOptions>) {
   log.info(`main(prefix=${prefix})`);
 
-  helpers.restify.apis.ping()(prefix, server);
-  helpers.restify.apis.about()(prefix, server);
+  pingApi.addRoutes(prefix, server);
+  aboutApi.addRoutes(prefix, server);
 
-  const chatApi = api({bansClient: bans.createClient(process.env, log)});
-  return chatApi(prefix, server);
+  const chatApi = api(Object.assign({
+    bansClient: bans.createClient(process.env, log)
+  }, options));
+  chatApi(prefix, server);
 };

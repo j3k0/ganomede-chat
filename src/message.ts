@@ -1,7 +1,31 @@
 import lodash from 'lodash';
 
-class Message {
-  constructor(sender, payload) {
+export interface MessageList {
+  items: (callback: (err: Error | null, items: Message[]) => void) => void;
+  add: (message: Message, callback: (err: Error | null, nMessages?: number) => void) => void;
+}
+
+export interface MessagePayload {
+  timestamp: number;
+  type: string;
+  message: string;
+}
+
+export class Message {
+
+  from: string;
+  timestamp: number;
+  type: string;
+  message: string;
+
+  constructor(sender: string, payload: MessagePayload) {
+
+    // Make typescript happy
+    this.from = '';
+    this.timestamp = 0;
+    this.type = '';
+    this.message = '';
+
     if (!sender) {
       throw new Error('bad sender');
     }

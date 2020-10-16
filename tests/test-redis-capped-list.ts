@@ -4,16 +4,14 @@
  * DS207: Consider shorter variations of null checks
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
-import redis from 'redis';
+import fakeredis from 'fakeredis';
 import expect from 'expect.js';
 import RedisCappedList from '../src/redis-capped-list';
-import config from '../config';
+// import config from '../src/config';
+fakeredis.fast = true;
 
 describe('RdisCappedList', function() {
-  const redisClient = redis.createClient({
-    host: config.redis.host,
-    port: config.redis.port
-  });
+  const redisClient = fakeredis.createClient();
 
   const id = key => `ganomede:test:redis-capped-list:${key}`;
 
@@ -35,7 +33,7 @@ describe('RdisCappedList', function() {
 
     before(function(done) {
       const jsons = itemsInserted.map(item => JSON.stringify(item));
-      const args = [redisKey].concat(jsons).concat(done);
+      const args = [redisKey as any].concat(jsons).concat(done);
       return redisClient.rpush.apply(redisClient, args);
     });
 
@@ -89,7 +87,7 @@ describe('RdisCappedList', function() {
 
       return redisClient.lrange(redisKey, 0, -1, function(err, items) {
         expect(err).to.be(null);
-        expect(items.map(JSON.parse.bind(JSON))).to.eql([3, 2].map(item));
+        expect(items.map(JSON.parse.bind(JSON) as any)).to.eql([3, 2].map(item));
         return done();
       });
     }));

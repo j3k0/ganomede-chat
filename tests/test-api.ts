@@ -6,30 +6,31 @@
  * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
  */
 import async from 'async';
-import redis from 'redis';
 import lodash from 'lodash';
 import sinon from 'sinon';
 import supertest from 'supertest';
 import expect from 'expect.js';
-import helpers from 'ganomede-helpers';
 import RoomManager from '../src/room-manager';
 import api from '../src/api';
-import config from '../config';
+import config from '../src/config';
 import samples from './samples';
 import fakeAuthdb from './fake-authdb';
 import fakeBansClient from './fake-bans-client';
+import restify from 'restify';
+import fakeredis from 'fakeredis';
+fakeredis.fast = true;
 
-describe('Chat API', function() {
-  const server = helpers.restify.createServer();
+describe('Chat API', function () {
+  const server = restify.createServer();
+  server.use(restify.plugins.queryParser());
+  server.use(restify.plugins.bodyParser());
+  server.use(restify.plugins.gzipResponse())
   const go = supertest.bind(null, server);
   const prefix = `testing:${config.redis.prefix}`;
 
   const authDb = fakeAuthdb.createClient();
 
-  const redisClient = redis.createClient({
-    host: config.redis.host,
-    port: config.redis.por
-  });
+  const redisClient = fakeredis.createClient();
 
   const roomManager = new RoomManager({
     redis: redisClient,
@@ -40,13 +41,13 @@ describe('Chat API', function() {
 
   const bansClient = fakeBansClient();
 
-  const endpoint = function(path, token) {
+  const endpoint = function (path: string | null, token: string | null): string {
     if (path == null) { path = '/'; }
     if (token == null) { token = 'invalid-token'; }
     return `/${config.routePrefix}/auth/${token}${path}`;
   };
 
-  const roomsEndpoint = function(username, roomId) {
+  const roomsEndpoint = function (username: string, roomId?: string): string {
     let token = samples.users[username] != null ? samples.users[username].token : undefined;
     if (username === process.env.API_SECRET) {
       token = process.env.API_SECRET;
@@ -64,9 +65,12 @@ describe('Chat API', function() {
   const spies = {
     refreshTtl: roomManager.refreshTtl,
     sendNotification: sinon.spy()
+  } as {
+    refreshTtl: any;
+    sendNotification: any;
   };
 
-  before(function(done) {
+  before(function (done) {
     //
     // Create users
     process.env.API_SECRET = 'api-secret';
@@ -85,7 +89,7 @@ describe('Chat API', function() {
     chatApi(config.routePrefix, server);
 
     // Create some rooms and messages
-    const addRooms = samples.rooms.map((roomInfo, idx) => cb => roomManager.create(roomInfo, function(err, room) {
+    const addRooms = samples.rooms.map((roomInfo, idx) => cb => roomManager.create(roomInfo, function (err, room) {
       if (err) {
         return cb(err);
       }
@@ -97,23 +101,26 @@ describe('Chat API', function() {
     return async.parallel(addRooms, done);
   });
 
-  after(done => redisClient.keys(`${prefix}:*`, function(err, keys) {
-    if (err) {
-      return done(err);
-    }
+  after(function (done) {
+    redisClient.keys(`${prefix}:*`, function (err, keys) {
+      if (err) {
+        return done(err);
+      }
 
-    if (!keys.length) {
-      return done();
-    }
+      if (!keys.length) {
+        return done();
+      }
 
-    return redisClient.del.apply(redisClient, keys.concat(done));
-  }));
+      const delArgs: any[] = (keys as any).concat(done);
+      redisClient.del.apply(redisClient, delArgs);
+    })
+  });
 
-  describe('GET /<auth>/rooms/:roomId', function() {
+  describe('GET /<auth>/rooms/:roomId', function () {
     it('returns room info with a list of messages', done => go()
       .get(roomsEndpoint('alice', samples.rooms[0].id))
       .expect(200)
-      .end(function(err, res) {
+      .end(function (err, res) {
         expect(err).to.be(null);
         expect(res.body).to.eql(lodash.extend({
           messages: lodash(
@@ -121,10 +128,10 @@ describe('Chat API', function() {
           ).reverse().value()
         }, samples.rooms[0]));
         return done();
-    }));
+      }));
 
     it('allows access with :authToken being API_SECRET', done => go()
-      .get(roomsEndpoint(process.env.API_SECRET, samples.rooms[0].id))
+      .get(roomsEndpoint(process.env.API_SECRET || '', samples.rooms[0].id))
       .expect(200, done));
 
     it('404 when room is not found', done => go()
@@ -140,39 +147,39 @@ describe('Chat API', function() {
       .expect(401, done));
   });
 
-  describe('POST /<auth>/rooms', function() {
+  describe('POST /<auth>/rooms', function () {
     it('creates new room', done => go()
       .post(roomsEndpoint('alice'))
-      .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
+      .send({ type: 'game/v1', users: ['alice', 'friendly-potato'] })
       .expect(200, {
         id: 'game/v1/alice/friendly-potato',
         type: 'game/v1',
-        users: [ 'alice', 'friendly-potato' ],
+        users: ['alice', 'friendly-potato'],
         messages: [],
       }, done));
 
     it('sends room info, if it already exists', done => // Calls .refreshTtl() on room[0]
-    go()
-      .post(roomsEndpoint('bob'))
-      .send(samples.rooms[0])
-      .expect(200, lodash.extend({
-        messages: lodash(lodash.clone(samples.messages[0])).reverse().value()
-      }, samples.rooms[0]), done));
+      go()
+        .post(roomsEndpoint('bob'))
+        .send(samples.rooms[0])
+        .expect(200, lodash.extend({
+          messages: lodash(lodash.clone(samples.messages[0])).reverse().value()
+        }, samples.rooms[0]), done));
 
-    it('refreshes ttl of existing rooms', function() {
+    it('refreshes ttl of existing rooms', function () {
       expect(spies.refreshTtl.callCount).to.be(1);
       return expect(spies.refreshTtl.getCall(0).args[0]).to.be(samples.rooms[0].id);
     });
 
     it('allows access with :authToken being API_SECRET', done => // Calls .refreshTtl() on room[1]
-    go()
-      .post(roomsEndpoint(process.env.API_SECRET))
-      .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
-      .expect(200, done));
+      go()
+        .post(roomsEndpoint(process.env.API_SECRET || ''))
+        .send({ type: 'game/v1', users: ['alice', 'friendly-potato'] })
+        .expect(200, done));
 
     it('401 on invalid auth tokens', done => go()
       .post(roomsEndpoint('no-username-hence-no-token'))
-      .send({type: 'game/v1', users: ['alice', 'friendly-potato']})
+      .send({ type: 'game/v1', users: ['alice', 'friendly-potato'] })
       .expect(401, done));
 
     it('401 if user not part of the room', done => go()
@@ -184,26 +191,26 @@ describe('Chat API', function() {
       .post(roomsEndpoint('banned-joe'))
       .send(samples.rooms[0])
       .expect(403)
-      .end(function(err) {
+      .end(function (err) {
         expect(err).to.be(null);
         expect(bansClient._callArgs[bansClient._callArgs.length - 1])
           .to.be('banned-joe');
         expect(bansClient._results).to.have.property('banned-joe', true);
         return done();
-    }));
+      }));
   });
 
-  const messageChecker = function(message, redisKey) {
-    const expectedJson = sender => lodash.extend({from: sender}, message);
+  const messageChecker = function (message, redisKey) {
+    const expectedJson = sender => lodash.extend({ from: sender }, message);
 
-    return (sender, cb) => redisClient.lindex(redisKey, 0, function(err, json) {
+    return (sender, cb) => redisClient.lindex(redisKey, 0, function (err, json) {
       expect(err).to.be(null);
       expect(JSON.parse(json)).to.eql(expectedJson(sender));
       return cb();
     });
   };
 
-  describe('POST /system-messages', function() {
+  describe('POST /system-messages', function () {
     const message = {
       type: 'event',
       timestamp: Date.now(),
@@ -211,7 +218,7 @@ describe('Chat API', function() {
     };
     const payload = lodash.extend({}, message, {
       type: 'game/v1',
-      users: [ 'alice', 'bob' ]
+      users: ['alice', 'bob']
     }
     );
     const roomId = samples.rooms[0].id;
@@ -223,19 +230,19 @@ describe('Chat API', function() {
       .post(systemMessagesEndpoint(process.env.API_SECRET))
       .send(payload)
       .expect(200)
-      .end(function(err, res) {
+      .end(function (err, res) {
         expect(err).to.be(null);
         return checkMessage('$$', done);
-    }));
+      }));
 
-    it('refreshes room\'s ttl', function() {
+    it('refreshes room\'s ttl', function () {
       expect(spies.refreshTtl.callCount).to.be(4);
       return expect(spies.refreshTtl.getCall(3).args[0]).to.be(samples.rooms[0].id);
     });
 
-    return it('calls sendNotification() for everyone in the room', function() {
+    return it('calls sendNotification() for everyone in the room', function () {
       expect(spies.sendNotification.callCount).to.be(2);
-      const expectCall = function(index, username) {
+      const expectCall = function (index, username) {
         const callArgs = spies.sendNotification.getCall(index).args;
         const notification = callArgs[0];
         expect(notification.to).to.be(username);
@@ -249,7 +256,7 @@ describe('Chat API', function() {
     });
   });
 
-  return describe('POST /<auth>/rooms/:roomId/messages', function() {
+  return describe('POST /<auth>/rooms/:roomId/messages', function () {
     const message = {
       timestamp: Date.now(),
       type: 'text',
@@ -262,16 +269,16 @@ describe('Chat API', function() {
     const checkMessage = messageChecker(message, redisKey);
 
     it('adds message to a room', done => // Calls .refreshTtl() on room[0]
-    go()
-      .post(messagesEndpoint('alice', roomId))
-      .send(message)
-      .expect(200)
-      .end(function(err, res) {
-        expect(err).to.be(null);
-        return checkMessage('alice', done);
-    }));
+      go()
+        .post(messagesEndpoint('alice', roomId))
+        .send(message)
+        .expect(200)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          return checkMessage('alice', done);
+        }));
 
-    it('refreshes room\'s ttl', function() {
+    it('refreshes room\'s ttl', function () {
       expect(spies.refreshTtl.callCount).to.be(5);
       return expect(spies.refreshTtl.getCall(4).args[0]).to.be(samples.rooms[0].id);
     });
@@ -279,7 +286,7 @@ describe('Chat API', function() {
     it('calls sendNotification() for everyone in the room but sender', done => go()
       .post(messagesEndpoint('alice', roomId))
       .send(message)
-      .end(function(err, res) {
+      .end(function (err, res) {
         expect(spies.sendNotification.callCount).to.be(4);
         const callArgs = spies.sendNotification.getCall(3).args;
         const notification = callArgs[0];
@@ -289,16 +296,16 @@ describe('Chat API', function() {
           from: 'alice'
         }, message));
         return done();
-    }));
+      }));
 
     it('allows access with :authToken being API_SECRET', done => go()
       .post(messagesEndpoint(process.env.API_SECRET, roomId))
       .send(message)
       .expect(200)
-      .end(function(err, res) {
+      .end(function (err, res) {
         expect(err).to.be(null);
         return checkMessage('$$', done);
-    }));
+      }));
 
     it('401 when user is not in the room', done => go()
       .post(messagesEndpoint('alice', samples.rooms[1].id))
@@ -315,12 +322,12 @@ describe('Chat API', function() {
     return it('403 when user is banned', done => go()
       .post(messagesEndpoint('banned-joe', roomId))
       .expect(403)
-      .end(function(err) {
+      .end(function (err) {
         expect(err).to.be(null);
         expect(bansClient._callArgs[bansClient._callArgs.length - 1])
           .to.be('banned-joe');
         expect(bansClient._results).to.have.property('banned-joe', true);
         return done();
-    }));
+      }));
   });
 });
