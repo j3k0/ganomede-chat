@@ -30,16 +30,29 @@ Variables available for service configuration (see [config.js](/config.js)):
  * `MAX_MESSAGES` - Max number of messages stored in a room (default 100)
  * `API_SECRET` - Give access to private APIs
  * `NODE_ENV` — Antything except `production` means that app is running in development (debug) mode
- * Optional link to [users service](https://github.com/j3k0/ganomede-users)
-   - `USERS_PORT_8080_TCP_ADDR` — address
-   - `USERS_PORT_8080_TCP_PORT`
-   - If any of these options are missing, no ban check will be performed — every user account will be considered to be in good standing (no bans)
+ * Optional link to the usermeta database containing user policies (see policies.md)
+   * `REDIS_USERMETA_PORT_6379_TCP_ADDR` - IP of the UsermetaDB redis
+   * `REDIS_USERMETA_PORT_6379_TCP_PORT` - Port of the UsermetaDB redis
+   * If any of these options are missing, no ban or block check will be performed — every user account will be considered to be in good standing (no bans)
 
 AuthDB
 ------
 
  * Contains a store "authToken" -> { "username": "someusername", ... }
  * Access it using node-authdb (https://github.com/j3k0/node-authdb)
+
+UsermetaDB
+----------
+
+Contains the policies (banned, blocked users, chat disabled, etc)
+ 
+ * `userA:$blocked` -> `user1,user2,user3`
+   * List of users that "userA" has blocked. Messages from users in this list won't be sent to "userA".
+ * `userA:$banned` -> timestamp
+   * trueish if the user is banned.
+ * `userA:$chat_disabled`-> `"true"`
+   * the string `"true"` indicates that the chat is disabled for this user.
+
 
 API
 ---
@@ -164,7 +177,7 @@ No room found with given ID.
 
 ### design note
 
-A notification will be sent to all users in the room (except the sender of the message).
+A notification will be sent to all users in the room (except the sender of the message and those that blocked him).
 
     {
         "from": "chat/v1",
