@@ -232,31 +232,31 @@ describe('Chat API', function () {
       .expect(200)
       .end(function (err, res) {
         expect(err).to.be(null);
-        return checkMessage('$$', done);
+        checkMessage('$$', done);
       }));
 
     it('refreshes room\'s ttl', function () {
       expect(spies.refreshTtl.callCount).to.be(4);
-      return expect(spies.refreshTtl.getCall(3).args[0]).to.be(samples.rooms[0].id);
+      expect(spies.refreshTtl.getCall(3).args[0]).to.be(samples.rooms[0].id);
     });
 
-    return it('calls sendNotification() for everyone in the room', function () {
+    it('calls sendNotification() for everyone in the room', function () {
       expect(spies.sendNotification.callCount).to.be(2);
       const expectCall = function (index, username) {
         const callArgs = spies.sendNotification.getCall(index).args;
         const notification = callArgs[0];
         expect(notification.to).to.be(username);
-        return expect(notification.data).to.eql(lodash.extend({
+        expect(notification.data).to.eql(lodash.extend({
           roomId: samples.rooms[0].id,
           from: '$$'
         }, message));
       };
       expectCall(0, 'alice');
-      return expectCall(1, 'bob');
+      expectCall(1, 'bob');
     });
   });
 
-  return describe('POST /<auth>/rooms/:roomId/messages', function () {
+  describe('POST /<auth>/rooms/:roomId/messages', function () {
     const message = {
       timestamp: Date.now(),
       type: 'text',
@@ -275,12 +275,12 @@ describe('Chat API', function () {
         .expect(200)
         .end(function (err, res) {
           expect(err).to.be(null);
-          return checkMessage('alice', done);
+          checkMessage('alice', done);
         }));
 
     it('refreshes room\'s ttl', function () {
       expect(spies.refreshTtl.callCount).to.be(5);
-      return expect(spies.refreshTtl.getCall(4).args[0]).to.be(samples.rooms[0].id);
+      expect(spies.refreshTtl.getCall(4).args[0]).to.be(samples.rooms[0].id);
     });
 
     it('calls sendNotification() for everyone in the room but sender', done => go()
@@ -295,7 +295,7 @@ describe('Chat API', function () {
           roomId: samples.rooms[0].id,
           from: 'alice'
         }, message));
-        return done();
+        done();
       }));
 
     it('allows access with :authToken being API_SECRET', done => go()
@@ -304,7 +304,7 @@ describe('Chat API', function () {
       .expect(200)
       .end(function (err, res) {
         expect(err).to.be(null);
-        return checkMessage('$$', done);
+        checkMessage('$$', done);
       }));
 
     it('401 when user is not in the room', done => go()
@@ -319,7 +319,7 @@ describe('Chat API', function () {
       .post(messagesEndpoint('alice', 'non-existent-room'))
       .expect(404, done));
 
-    return it('403 when user is banned', done => go()
+    it('403 when user is banned', done => go()
       .post(messagesEndpoint('banned-joe', roomId))
       .expect(403)
       .end(function (err) {
@@ -327,7 +327,7 @@ describe('Chat API', function () {
         expect(bansClient._callArgs[bansClient._callArgs.length - 1])
           .to.be('banned-joe');
         expect(bansClient._results).to.have.property('banned-joe', true);
-        return done();
+        done();
       }));
   });
 });
