@@ -15,7 +15,7 @@ import api from '../src/api';
 import config from '../src/config';
 import samples from './samples';
 import fakeAuthdb from './fake-authdb';
-import fakeBansClient from './fake-bans-client';
+import fakePoliciesClient from './fake-policies-client';
 import restify from 'restify';
 import fakeredis from 'fakeredis';
 fakeredis.fast = true;
@@ -39,7 +39,7 @@ describe('Chat API', function () {
     maxSize: config.redis.maxRoomMessages
   });
 
-  const bansClient = fakeBansClient();
+  const bansClient = fakePoliciesClient();
 
   const endpoint = function (path: string | null, token: string | null): string {
     if (path == null) { path = '/'; }
@@ -84,7 +84,7 @@ describe('Chat API', function () {
       roomManager,
       authDb,
       sendNotification: spies.sendNotification,
-      bansClient
+      policiesClient: bansClient
     });
     chatApi(config.routePrefix, server);
 

@@ -1,6 +1,6 @@
 import api, { ApiOptions } from './api';
 import log from './log';
-import bans from './bans';
+import policies from './policies';
 import aboutApi from './about-api';
 import pingApi from './ping-api';
 import { Server } from 'restify';
@@ -20,7 +20,7 @@ export default function(prefix: string, server: Server, options?: Partial<ApiOpt
     });
   }
   const chatApi = api(Object.assign({
-    bansClient: bans.createClient(redisUsermeta, log),
+    policiesClient: policies.createClient(redisUsermeta, log),
   }, options));
   chatApi(prefix, server);
 };

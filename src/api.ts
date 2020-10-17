@@ -14,7 +14,7 @@ import RoomManager, { Room } from './room-manager';
 import Message from './message';
 import log from './log';
 import notify from './notify';
-import { BansClient } from './bans';
+import { PoliciesClient } from './policies';
 import authdbHelper from './helpers/authdb-helper';
 import SendNotification, { SendNotificationFunction } from './helpers/send-notification';
 
@@ -23,12 +23,12 @@ export interface ApiOptions {
   redisClient?: RedisClient;
   authDb?: any;
   sendNotification?: SendNotificationFunction;
-  bansClient: BansClient;
+  policiesClient: PoliciesClient;
 }
 
 export default function (options: ApiOptions) {
   if (options == null) 
-    throw new TypeError('Please provide options.bansClient');
+    throw new TypeError('Please provide options.policiesClient');
 
     const authDb = options.authDb || AuthDB.createClient({
     host: config.authdb.host,
@@ -53,9 +53,9 @@ export default function (options: ApiOptions) {
     secret: config.secret || ''
   });
 
-  const bansClient:BansClient = options.bansClient;
-  if (!options.bansClient) {
-    throw new TypeError('Please provide options.bansClient');
+  const policiesClient:PoliciesClient = options.policiesClient;
+  if (!options.policiesClient) {
+    throw new TypeError('Please provide options.policiesClient');
   }
 
   const apiSecretOrAuthMiddleware = function (req, res, next) {
@@ -83,7 +83,7 @@ export default function (options: ApiOptions) {
       username
     } = req.params.user;
 
-    return bansClient.isBanned(username, function (err, banned) {
+    return policiesClient.isBanned(username, function (err, banned) {
       if (err) {
         log.error({ err, username }, 'Failed to check ban');
         return next(new restifyErrors.InternalServerError());
