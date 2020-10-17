@@ -1,7 +1,8 @@
 'use strict';
 
-const logMod = require('./log');
-const StatsD = require('node-statsd');
+import logMod from './log';
+import * as StatsD from 'node-statsd';
+
 const dummyClient = () => {
   return {
     increment: function () {},

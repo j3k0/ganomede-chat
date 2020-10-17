@@ -1,10 +1,9 @@
 'use strict';
 
-require('coffee-script/register');
 import pk = require("../package.json");
 import main from './main';
 import serverMod from './server';
-
+import restifyErrors from 'restify-errors';
 
 // Use New Relic if LICENSE_KEY has been specified.
 if (process.env.NEW_RELIC_LICENSE_KEY) {
@@ -14,9 +13,9 @@ if (process.env.NEW_RELIC_LICENSE_KEY) {
   require('newrelic');
 }
 
-const cluster = require('cluster');
-const log = require('./src/log');
-const config = require('./config');
+import cluster from 'cluster';
+import log from './log';
+import config from './config';
 
 if (cluster.isMaster) {
 
@@ -61,7 +60,7 @@ else {
       // a new worker.
       cluster.worker.disconnect();
 
-      const InternalError = require('restify').InternalError;
+      const InternalError = restifyErrors.InternalError;
       res.send(new InternalError(err, err.message || 'unexpected error'));
     }
     catch (err2) {
