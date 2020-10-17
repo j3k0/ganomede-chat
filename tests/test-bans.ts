@@ -42,24 +42,11 @@ describe('bans', function() {
 
 
   return describe('RealClient', function() {
-    // const reply = banned => ({
-    //   "username": "alice",
-    //   "exists": banned,
-    //   "createdAt": banned != null ? banned : {1476531925454 : 0}
-    // });
-    // const fakeApi = banned => ({
-    //   get(url, cb) {
-    //     assert(url, '/users/v1/banned-users/alice');
-    //     assert(cb instanceof Function);
-    //     return process.nextTick(() => cb(null, {}, {}, reply(banned)));
-    //   }
-    // });
 
     it('returns true for existing bans', function(done) {
       const redisUsermeta = fakeredis.createClient();
       redisUsermeta.set("alice:$banned", "1476531925454");
       const client = new bans.RealClient(redisUsermeta);
-      // client.api = fakeApi(true);
 
       client.isBanned('alice', function(err, banned) {
         assert(err === null);
@@ -70,7 +57,6 @@ describe('bans', function() {
 
     it('returns false for non-existing bans', function(done) {
       const client = new bans.RealClient(fakeredis.createClient());
-      // client.api = fakeApi(false);
 
       client.isBanned('alice', function(err, banned) {
         assert(err === null);
