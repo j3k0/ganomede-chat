@@ -1,23 +1,20 @@
 app:
     build: .
-    volumes:
-     - ./src:/home/app/code/src
-     - ./tests:/home/app/code/tests
-     - ./doc:/home/app/code/doc
+    command: sh -c "node build/src/index.js | npx bunyan"
     ports:
-     - "8000:8000"
+     - "8000"
     links:
      - redisAuth:redis_auth
      - redisChat:redis_chat
+     - redisUsermeta:redis_usermeta
     environment:
      - "API_SECRET=BE295A7D-C10F-4448-9198-D5AB142E7546"
 
 redisAuth:
-    image: tutum/redis:latest
-    environment:
-     - "REDIS_PASS=**None**"
+    image: redis:alpine
 
 redisChat:
-    image: tutum/redis:latest
-    environment:
-     - "REDIS_PASS=**None**"
+    image: redis:alpine
+
+redisUsermeta:
+    image: redis:alpine
