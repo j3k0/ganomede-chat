@@ -1,39 +1,29 @@
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
 import assert from 'assert';
-import bans from '../src/bans';
+import bans, { BansClient, RealClient, FakeClient } from '../src/bans';
+import fakeredis from 'fakeredis';
+fakeredis.fast = true;
 
 describe('bans', function() {
   describe('createClient()', function() {
-    it('returns FakeClient if env vars are missing and prints warnings', function() {
+    it('returns FakeClient when redis usermeta client is missing and prints warnings', function() {
       const log = {
         warnCallCount: 0,
-        warn(obj, message) {
+        warn(_obj, message: string) {
           this.warnCallCount++;
-          assert(obj.addr === null);
-          assert(obj.port === null);
-          return assert(/^Env missing some vars/.test(message));
+          assert(/^Redis Usermeta is missing/.test(message));
         }
       };
 
-      const client = bans.createClient({}, log as any);
-      assert(client instanceof bans.FakeClient);
-      return assert(log.warnCallCount === 1);
+      const client: BansClient = bans.createClient(null, log as any);
+      assert(client instanceof FakeClient);
+      assert(log.warnCallCount === 1);
     });
 
-    return it('returns RealClient when env has props', function() {
-      const env = {
-        USERS_PORT_8080_TCP_ADDR: 'domain.tld',
-        USERS_PORT_8080_TCP_PORT: 999
-      };
-
-      const client = bans.createClient(env);
-      assert(client instanceof bans.RealClient);
-      return assert(client.api.url.href === 'http://domain.tld:999/');
+    it('returns RealClient when redis usermeta is specified', function() {
+      const redisUsermeta = fakeredis.createClient();
+      const client:RealClient = bans.createClient(redisUsermeta) as RealClient;
+      assert(client instanceof RealClient);
+      assert(!!client.redisUsermeta);
     });
   });
 
@@ -52,23 +42,24 @@ describe('bans', function() {
 
 
   return describe('RealClient', function() {
-    const reply = banned => ({
-      "username": "alice",
-      "exists": banned,
-      "createdAt": banned != null ? banned : {1476531925454 : 0}
-    });
-
-    const fakeApi = banned => ({
-      get(url, cb) {
-        assert(url, '/users/v1/banned-users/alice');
-        assert(cb instanceof Function);
-        return process.nextTick(() => cb(null, {}, {}, reply(banned)));
-      }
-    });
+    // const reply = banned => ({
+    //   "username": "alice",
+    //   "exists": banned,
+    //   "createdAt": banned != null ? banned : {1476531925454 : 0}
+    // });
+    // const fakeApi = banned => ({
+    //   get(url, cb) {
+    //     assert(url, '/users/v1/banned-users/alice');
+    //     assert(cb instanceof Function);
+    //     return process.nextTick(() => cb(null, {}, {}, reply(banned)));
+    //   }
+    // });
 
     it('returns true for existing bans', function(done) {
-      const client = new bans.RealClient('domain.tld', 999, {});
-      client.api = fakeApi(true);
+      const redisUsermeta = fakeredis.createClient();
+      redisUsermeta.set("alice:$banned", "1476531925454");
+      const client = new bans.RealClient(redisUsermeta);
+      // client.api = fakeApi(true);
 
       client.isBanned('alice', function(err, banned) {
         assert(err === null);
@@ -78,8 +69,8 @@ describe('bans', function() {
     });
 
     it('returns false for non-existing bans', function(done) {
-      const client = new bans.RealClient('domain.tld', 999, {});
-      client.api = fakeApi(false);
+      const client = new bans.RealClient(fakeredis.createClient());
+      // client.api = fakeApi(false);
 
       client.isBanned('alice', function(err, banned) {
         assert(err === null);
