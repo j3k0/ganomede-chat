@@ -8,7 +8,7 @@ import api from '../src/api';
 import config from '../src/config';
 import samples from './samples';
 import fakeAuthdb, { AuthdbClient } from './fake-authdb';
-import fakePoliciesClient, { FakePoliciesClient } from './fake-policies-client';
+import policies, { PoliciesClient } from '../src/policies';
 import restify, { Server } from 'restify';
 import fakeredis from 'fakeredis';
 import { RedisClient } from 'redis';
@@ -21,7 +21,8 @@ interface Test {
   authDb: AuthdbClient;
   redisClient: RedisClient;
   roomManager: RoomManager;
-  policiesClient: FakePoliciesClient;
+  redisUsermeta: RedisClient;
+  policiesClient: PoliciesClient;
   spies: {
     refreshTtl: any;
     sendNotification: any;
@@ -40,6 +41,7 @@ function createTest(): Test {
   test.authDb = fakeAuthdb.createClient();
 
   test.redisClient = fakeredis.createClient();
+  test.redisUsermeta = fakeredis.createClient();
 
   test.roomManager = new RoomManager({
     redis: test.redisClient!,
@@ -48,7 +50,7 @@ function createTest(): Test {
     maxSize: config.redis.maxRoomMessages
   });
 
-  test.policiesClient = fakePoliciesClient();
+  test.policiesClient = policies.createClient(test.redisUsermeta);
   
   test.roomManager.refreshTtl = sinon.spy(test.roomManager.refreshTtl);
   test.spies = {
@@ -205,17 +207,17 @@ describe('Chat API', function () {
       .send(samples.rooms[0])
       .expect(401, done));
 
-    it('403 if user is banned', done => test.go()
-      .post(roomsEndpoint('banned-joe'))
-      .send(samples.rooms[0])
-      .expect(403)
-      .end(function (err) {
-        expect(err).to.be(null);
-        expect(test.policiesClient._callArgs[test.policiesClient._callArgs.length - 1])
-          .to.be('banned-joe');
-        expect(test.policiesClient._results).to.have.property('banned-joe', true);
-        done();
-      }));
+    it('403 if user is banned', done => {
+      test.redisUsermeta.set('bob:$banned', '1');
+      test.go()
+        .post(roomsEndpoint('bob'))
+        .send(samples.rooms[0])
+        .expect(403)
+        .end(function (err) {
+          expect(err).to.be(null);
+          done();
+        });
+    });
   });
 
   const messageChecker = function (message, redisKey) {
@@ -328,10 +330,13 @@ describe('Chat API', function () {
     });
 
     it('does not call sendNotification() if policies.shouldNotify returns false', done => {
+      test.redisUsermeta.set('alice:$blocked', 'bob');
       test.go()
-        .post(messagesEndpoint('blocked-bob', samples.rooms[2].id))
+        .post(messagesEndpoint('bob', samples.rooms[0].id))
         .send(message)
+        .expect(200)
         .end(function (err, res) {
+          expect(err).to.be(null);
           expect(test.spies.sendNotification.callCount).to.be(0);
           done();
         })
@@ -358,15 +363,15 @@ describe('Chat API', function () {
       .post(messagesEndpoint('alice', 'non-existent-room'))
       .expect(404, done));
 
-    it('403 when user is banned', done => test.go()
-      .post(messagesEndpoint('banned-joe', roomId))
-      .expect(403)
-      .end(function (err) {
-        expect(err).to.be(null);
-        expect(test.policiesClient._callArgs[test.policiesClient._callArgs.length - 1])
-          .to.be('banned-joe');
-        expect(test.policiesClient._results).to.have.property('banned-joe', true);
-        done();
-      }));
+    it('403 when user is banned', done => {
+      test.redisUsermeta.set('bob:$banned', '1');
+      test.go()
+        .post(messagesEndpoint('bob', roomId))
+        .expect(403)
+        .end(function (err) {
+          expect(err).to.be(null);
+          done();
+        });
+    });
   });
 });
