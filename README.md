@@ -21,19 +21,30 @@ Variables available for service configuration (see [config.js](/config.js)):
 
  * `PORT`
  * `ROUTE_PREFIX`
+ * `API_SECRET` - Give access to private APIs
+ * `NODE_ENV` — Antything except `production` means that app is running in development (debug) mode
+ * `MAX_MESSAGES` - Max number of messages stored in a room (default 100)
+
+Links with DBs and other services:
+
  * `REDIS_AUTH_PORT_6379_TCP_ADDR` - IP of the AuthDB redis
  * `REDIS_AUTH_PORT_6379_TCP_PORT` - Port of the AuthDB redis
  * `REDIS_CHAT_PORT_6379_TCP_ADDR` - IP of the ChatDB redis
  * `REDIS_CHAT_PORT_6379_TCP_PORT` - Port of the ChatDB redis
  * `NOTIFICATIONS_PORT_8080_TCP_ADDR` - IP of the notifications service
  * `NOTIFICATIONS_PORT_8080_TCP_PORT` - Port of the notifications service
- * `MAX_MESSAGES` - Max number of messages stored in a room (default 100)
- * `API_SECRET` - Give access to private APIs
- * `NODE_ENV` — Antything except `production` means that app is running in development (debug) mode
- * Optional link to the usermeta database containing user policies (see policies.md)
-   * `REDIS_USERMETA_PORT_6379_TCP_ADDR` - IP of the UsermetaDB redis
-   * `REDIS_USERMETA_PORT_6379_TCP_PORT` - Port of the UsermetaDB redis
-   * If any of these options are missing, no ban or block check will be performed — every user account will be considered to be in good standing (no bans)
+
+Optional link to the usermeta database containing user policies (see policies.md)
+
+ * `REDIS_USERMETA_PORT_6379_TCP_ADDR` - IP of the UsermetaDB redis
+ * `REDIS_USERMETA_PORT_6379_TCP_PORT` - Port of the UsermetaDB redis
+ * If any of these options are missing, no ban or block check will be performed — every user account will be considered to be in good standing (no bans)
+
+Statsd options (used for monitoring).
+
+ * `STATSD_HOST` - host that runs the statsd server
+ * `STATSD_PORT` - port to connect to statsd server
+ * `STATSD_PREFIX` - prefix for data stored in stats (default to `ganomede.chat.`)
 
 AuthDB
 ------

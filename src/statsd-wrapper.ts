@@ -1,7 +1,7 @@
 'use strict';
 
 import logMod from './log';
-import * as StatsD from 'node-statsd';
+import {StatsD} from 'node-statsd';
 
 const dummyClient = () => {
   return {
@@ -35,7 +35,7 @@ const createClient = function (arg) {
   }
   const client = new StatsD({
     host: process.env.STATSD_HOST,
-    port: process.env.STATSD_PORT,
+    port: +(process.env.STATSD_PORT || ''),
     prefix: process.env.STATSD_PREFIX
   });
   client.socket.on('error', function (error) {
