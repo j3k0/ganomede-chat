@@ -17,6 +17,7 @@ import notify from './notify';
 import { PoliciesClient } from './policies';
 import authdbHelper from './helpers/authdb-helper';
 import SendNotification, { SendNotificationFunction } from './helpers/send-notification';
+import { RequestHandler } from 'restify';
 
 export interface ApiOptions {
   roomManager?: RoomManager;
@@ -135,13 +136,13 @@ export default function (options: ApiOptions) {
     return next();
   });
 
-  const createRoom = fetchMessages => (function (req, res, next) {
+  const createRoom = (fetchMessages: boolean, refreshTtl: boolean): RequestHandler => (function (req, res, next) {
     if (req.params.authToken !== process.env.API_SECRET) {
       if (!(req.body.users.indexOf(req.params.user.username) >= 0)) {
         return next(new restifyErrors.UnauthorizedError());
       }
     }
-    return roomManager.create(req.body || {}, function (err, room) {
+    roomManager.create(req.body || {}, function (err, room) {
       if (err) {
         if (err.message === RoomManager.errors.INVALID_CREATION_OPTIONS) {
           return next(new restifyErrors.BadRequestError());
@@ -161,26 +162,23 @@ export default function (options: ApiOptions) {
             }
           ], function (err, room, messages) {
             if (err) {
-              log.error('createRoom() failed to retrieve existing room', {
-                err,
-                body: req.body
-              }
-              );
+              req.log.warn({ err, body: req.body }, 'createRoom() failed to retrieve existing room');
               return next(new restifyErrors.InternalServerError());
             }
 
             req.params.room = room;
             req.params.messages = messages;
-            return refreshRoom(req, res, next);
+            if (refreshTtl) {
+              req.log.info('createRoom > refreshRoom');
+              refreshRoom(req, res, next);
+            }
+            else
+              next();
           });
         }
 
-        log.error('createRoom() failed', {
-          err,
-          body: req.body
-        }
-        );
-        return next(new restifyErrors.InternalServerError());
+        log.error({err, body: req.body}, 'createRoom() failed');
+        next(new restifyErrors.InternalServerError());
       }
 
       req.params.room = room;
@@ -221,24 +219,25 @@ export default function (options: ApiOptions) {
         return next(new restifyErrors.InternalServerError());
       }
 
-      notify(sendNotification, req.params.room, message, req.body.push);
+      notify(policiesClient, sendNotification, req.params.room, message, req.body.push);
       res.send(200);
       next();
     });
   });
 
-  var refreshRoom = function (req, res, next) {
+  // in production, we won't wait for the ttl to has been refresh.
+  // in dev, we will (so tests won't fail)
+  const refreshRoom: RequestHandler = function (req, _res, next) {
+    req.log.info('refreshRoom');
     roomManager.refreshTtl(req.params.room.id, function (err, retval) {
       if (err || (retval !== 1)) {
-        return log.error({
-          err,
-          retval,
-          roomId: req.params.room.id
-        }, 'refreshRoom() failed');
+        req.log.warn({ err, retval, roomId: req.params.room.id }, 'refreshRoom() failed');
       }
+      if (config.debug)
+        next();
     });
-
-    return next();
+    if (!config.debug)
+      next();
   };
 
   return function (prefix, server) {
@@ -246,7 +245,7 @@ export default function (options: ApiOptions) {
     server.post(`/${prefix}/auth/:authToken/rooms`,
       apiSecretOrAuthMiddleware,
       checkIfBanned,
-      createRoom(true),
+      createRoom(true, true),
       sendRoomJson);
 
     // read messages
@@ -265,10 +264,10 @@ export default function (options: ApiOptions) {
       refreshRoom);
 
     // add service message
-    return server.post(`/${prefix}/auth/:authToken/system-messages`,
+    server.post(`/${prefix}/auth/:authToken/system-messages`,
       apiSecretOrAuthMiddleware,
       requireSecret,
-      createRoom(false),
+      createRoom(false, false),
       addMessage('event'),
       refreshRoom);
   };
