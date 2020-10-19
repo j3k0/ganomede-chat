@@ -169,7 +169,7 @@ export default function (options: ApiOptions) {
             req.params.room = room;
             req.params.messages = messages;
             if (refreshTtl) {
-              req.log.info('createRoom > refreshRoom');
+              // req.log.info('createRoom > refreshRoom');
               refreshRoom(req, res, next);
             }
             else
@@ -229,7 +229,7 @@ export default function (options: ApiOptions) {
   // in production, we won't wait for the ttl to has been refresh.
   // in dev, we will (so tests won't fail)
   const refreshRoom: RequestHandler = function (req, _res, next) {
-    req.log.info('refreshRoom');
+    // req.log.info('refreshRoom');
     roomManager.refreshTtl(req.params.room.id, function (err, retval) {
       if (err || (retval !== 1)) {
         req.log.warn({ err, retval, roomId: req.params.room.id }, 'refreshRoom() failed');

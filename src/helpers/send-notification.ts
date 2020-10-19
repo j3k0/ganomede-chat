@@ -61,7 +61,7 @@ export function sendNotification(baseURL: string, notification: Notification, ca
   }
 
   const url = `${baseURL}/notifications/v1/messages`;
-  log.info({ url, notification }, "sending notification");
+  // log.info({ url, notification }, "sending notification");
 
   return superagent
     .post(url)
