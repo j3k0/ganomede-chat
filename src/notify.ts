@@ -5,36 +5,40 @@ import log from './log';
 import { Room } from './room-manager';
 import Message from './message';
 import { NotificationPayload, Notification, SendNotificationFunction } from './helpers/send-notification';
+import { PoliciesClient } from './policies';
 
 // Sends notification of a message to everyone but sender.
-const notify = function(sendFn: SendNotificationFunction, room: Room, message: Message, push?: any) {
+const notify = function(policies: PoliciesClient, sendFn: SendNotificationFunction, room: Room, message: Message, push?: any): void {
 
-  // TODO: also remove blocked users
   const receivers: string[] = room.users.filter((username: string) => username !== message.from);
+  log.info({receivers}, 'notfiy');
 
-  return async.each(receivers, function(receiver, cb) {
-    const options: Notification = {
-      from: config.pkg.api,
-      to: receiver,
-      type: 'message',
-      data: lodash.extend({roomId: room.id}, message)
-    };
-
-    if (push) {
-      options.push = push;
-    }
-
-    const notification = new NotificationPayload(options);
-
-    return sendFn(notification, function(err, response) {
-      if (err) {
-        log.warn({
-          err,
-          notification,
-          response
-        }, 'notify failed');
+  async.each(receivers, function (receiver: string, cb: () => void): void {
+    // log.info({receiver}, 'shouldNotify?')
+    policies.shouldNotify(message.from, receiver, (err: Error | null, policiesOK: boolean): void => {
+      if (!policiesOK) {
+        log.info({ sender: message.from, receiver }, 'notify skipped (policies)');
+        return cb();
       }
-      cb();
+
+      const options: Notification = {
+        from: config.pkg.api,
+        to: receiver,
+        type: 'message',
+        data: lodash.extend({ roomId: room.id }, message)
+      };
+
+      if (push) {
+        options.push = push;
+      }
+
+      const notification = new NotificationPayload(options);
+      sendFn(notification, function (err, response) {
+        if (err) {
+          log.warn({ err, notification, response }, 'notify failed');
+        }
+        cb();
+      });
     });
   });
 };

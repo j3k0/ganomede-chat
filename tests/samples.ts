@@ -10,11 +10,14 @@ export default {
     id: 'game/v1/alice/bob',
     type: 'game/v1',
     users: ['alice', 'bob']
-  }
-    , {
+  }, {
     id: 'game/v1/user1/user2',
     type: 'game/v1',
     users: ['user1', 'user2']
+  }, {
+    id: 'game/v1/alice/blocked-bob',
+    type: 'game/v1',
+    users: ['alice', 'blocked-bob']
   }
   ],
 
@@ -58,6 +61,8 @@ export default {
       "type": "text",
       "message": "hello"
     }
-    ]
+    ],
+    // rooms[2]
+    []
   ]
 };
