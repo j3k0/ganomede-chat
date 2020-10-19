@@ -11,7 +11,7 @@ import { PoliciesClient } from './policies';
 const notify = function(policies: PoliciesClient, sendFn: SendNotificationFunction, room: Room, message: Message, push?: any): void {
 
   const receivers: string[] = room.users.filter((username: string) => username !== message.from);
-  log.info({receivers}, 'notfiy');
+  // log.info({receivers}, 'notfiy');
 
   async.each(receivers, function (receiver: string, cb: () => void): void {
     // log.info({receiver}, 'shouldNotify?')
