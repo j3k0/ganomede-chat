@@ -1,3 +1,4 @@
-node_modules
-doc/
-*.pem
+/build
+/node_modules
+/doc/
+/*.pem

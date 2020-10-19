@@ -1,22 +1,24 @@
-FROM node:6.10.3
-EXPOSE 8000
-MAINTAINER Jean-Christophe Hoelt <hoelt@fovea.cc>
-RUN useradd app -d /home/app
+FROM node:12
 WORKDIR /home/app/code
-COPY package.json /home/app/code/package.json
-RUN chown -R app /home/app
+MAINTAINER Jean-Christophe Hoelt <hoelt@fovea.cc>
+EXPOSE 8000
 
-USER app
+# Create 'app' user
+RUN useradd app -d /home/app
+
+# Install NPM packages
+COPY package.json .
+COPY package-lock.json .
 RUN npm install
 
-COPY Makefile config.js index.js newrelic.js coffeelint.json .eslintignore index.js /home/app/code/
-COPY ./src /home/app/code/src
-COPY ./tests /home/app/code/tests
+ENV NODE_ENV=production
+COPY tsconfig.json .
+COPY tests tests
+COPY src src
+RUN npm run build
 
-USER root
+# Copy app source files
 RUN chown -R app /home/app
 
-WORKDIR /home/app/code
 USER app
-RUN make check && make install
-CMD node index.js
+CMD npm start

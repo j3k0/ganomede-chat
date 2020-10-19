@@ -1,54 +1,51 @@
 {
   "name": "chat",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "api": "chat/v1",
   "description": "chat micro service",
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "lint": "make check",
-    "test": "make test",
-    "testw": "nodemon --ext js,coffee --watch index.js --watch config.js --watch newrelic.js --watch src/ --watch tests/ -x 'npm test'"
+    "start": "node -r source-map-support/register build/src/index.js",
+    "build": "tsc",
+    "buildw": "tsc -w",
+    "debug": "API_SECRET=42 nodemon --exec \" ts-node src/index.ts\" -w src -e ts | bunyan -o short --color",
+    "test": "API_SECRET=42 mocha --color --require ts-node/register --extensions ts tests/**/test-*.ts | bunyan -l error -o short --color"
   },
   "author": "Jean-Christophe Hoelt <hoelt@fovea.cc>",
   "license": "Private",
   "dependencies": {
     "async": "^1.5.0",
     "authdb": "^0.2.0",
-    "bunyan": "^1.2.3",
-    "coffee-script": "^1.10.0",
+    "bunyan": "^1.8.12",
+    "cd": "^0.3.3",
     "forever": "^0.15.1",
-    "ganomede-helpers": "^1.0.1",
     "lodash": "^3.10.1",
     "newrelic": "^1.20.2",
-    "redis": "^2.2.5",
-    "restify": "^4.0.3"
-  },
-  "config": {
-    "blanket": {
-      "pattern": [
-        "src"
-      ],
-      "data-cover-never": "node_modules",
-      "loader": "./node-loaders/coffee-script"
-    }
-  },
-  "eslintConfig": {
-    "extends": "eslint:recommended",
-    "env": {
-      "node": true,
-      "mocha": true
-    }
+    "node-statsd": "^0.1.1",
+    "redis": "^3.0.2",
+    "restify": "^8.5.1",
+    "restify-clients": "^4.0.0",
+    "restify-errors": "^8.0.2",
+    "source-map-support": "^0.5.19",
+    "ts-node": "^8.10.1"
   },
   "devDependencies": {
+    "@mayachit/mocha-pretty-bunyan": "^1.0.1",
+    "@types/bunyan": "^1.8.6",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^14.0.5",
+    "@types/redis": "^2.8.21",
+    "@types/restify": "^8.4.2",
+    "@types/restify-errors": "^4.3.3",
     "blanket": "^1.1.6",
-    "coffeelint": "^1.13.0",
-    "eslint": "^1.7.2",
+    "eslint": "^4.3.0",
     "expect.js": "^0.3.1",
+    "fakeredis": "^2.0.0",
     "mocha": "^2.3.3",
-    "nodemon": "^1.11.0",
+    "nodemon": "^2.0.4",
     "sinon": "^1.17.2",
-    "supertest": "^1.1.0"
+    "supertest": "^1.1.0",
+    "typescript": "^3.9.3"
   }
 }
