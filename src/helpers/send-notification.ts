@@ -56,7 +56,7 @@ export class NotificationPayload implements Notification {
 }
 
 export function sendNotification(baseURL: string, notification: Notification, callback?: SendNotificationCallback) {
-  if (!notification.hasOwnProperty('secret')) {
+  if (!notification.secret) {
     notification.secret = process.env.API_SECRET;
   }
 
