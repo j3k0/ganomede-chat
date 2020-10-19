@@ -1,14 +1,16 @@
 import assert from 'assert';
-import { PoliciesClientCallback } from '../src/policies';
+import { PoliciesClientCallback, PoliciesClient } from '../src/policies';
+
+export interface FakePoliciesClient extends PoliciesClient {
+  _nCalls: number;
+  _callArgs: any[];
+  _results: any;
+  // isBanned(username: string, callback: PoliciesClientCallback);
+  // shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback);
+};
 
 const defaultExport = function () {
-  const ret: {
-    _nCalls: number;
-    _callArgs: any[];
-    _results: any;
-    isBanned(username: string, callback: PoliciesClientCallback);
-    shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback);
-  } = {
+  const ret: FakePoliciesClient = {
     _nCalls: 0,
     _callArgs: [],
     _results: {},
@@ -20,6 +22,7 @@ const defaultExport = function () {
       return process.nextTick(() => callback(null, banned));
     },
     shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback) {
+      // console.log('FakePolicies: should notify ' + sender + ' > ' + receiver);
       ++this._nCalls;
       this._callArgs.push([sender, receiver]);
       const banned = sender.indexOf('banned-') === 0;

@@ -171,7 +171,7 @@ export class RoomManager {
   }
 
   refreshTtl(roomId, callback) {
-    return this.redis.pexpire(this.key(roomId), this.ttlMillis, callback);
+    this.redis.pexpire(this.key(roomId), this.ttlMillis, callback);
   }
 }
 

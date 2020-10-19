@@ -206,6 +206,7 @@ export default function (options: ApiOptions) {
       const username:string = req.params.apiSecret ? '$$' : req.params.user.username;
       message = new Message(username, req.body);
     } catch (e) {
+      req.log.warn({err:e}, 'Bad Request');
       return next(new restifyErrors.BadRequestError(e.message));
     }
 

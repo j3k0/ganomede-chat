@@ -2,7 +2,7 @@ import Logger from 'bunyan';
 import logMod from './log';
 import { RedisClient } from 'redis';
 
-export type PoliciesClientCallback = (err: Error | null, banned: boolean) => void;
+export type PoliciesClientCallback = (err: Error | null, result: boolean) => void;
 
 export interface PoliciesClient {
   isBanned(username: string, callback: PoliciesClientCallback): void;
@@ -39,6 +39,7 @@ export class RealClient implements PoliciesClient {
   }
 
   shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback): void {
+    // logMod.info('RealPoliciesClient > should notify?');
     this.redisUsermeta.mget([`${receiver}:$blocked`, `${receiver}:$chat_disabled`], (err: Error | null, values: string[]) => {
       if (err) {
         this.log.warn({sender, receiver, err}, 'Failed to check policies');
@@ -74,6 +75,7 @@ export class FakeClient {
     return process.nextTick(fn);
   }
   shouldNotify(_sender: string, _receiver: string, callback: PoliciesClientCallback) {
+    // logMod.info('FakePoliciesClient > should notify?');
     const fn = () => callback(null, false);
     return process.nextTick(fn);
   }
