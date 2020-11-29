@@ -81,7 +81,7 @@ describe('bans', function() {
 
       it('returns false if the receiver has disabled the chat', function(done) {
         const redisUsermeta = fakeredis.createClient();
-        redisUsermeta.set("bob:$chat_disabled", "true");
+        redisUsermeta.set("bob:$chatdisabled", "true");
         const client = new RealClient(redisUsermeta);
         client.shouldNotify('alice', 'bob', function(err, notify) {
           assert(err === null);
