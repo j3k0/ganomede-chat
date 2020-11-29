@@ -15,9 +15,12 @@ const notify = function(policies: PoliciesClient, sendFn: SendNotificationFuncti
 
   async.each(receivers, function (receiver: string, cb: () => void): void {
     // log.info({receiver}, 'shouldNotify?')
-    policies.shouldNotify(message.from, receiver, (err: Error | null, policiesOK: boolean): void => {
+    policies.shouldNotify(message.from, receiver, (err: Error | null, policiesOK: boolean, errorNotification?: Notification): void => {
       if (!policiesOK) {
         log.info({ sender: message.from, receiver }, 'notify skipped (policies)');
+        if (errorNotification) {
+          sendFn(new NotificationPayload(errorNotification), function (_err, _response) {});
+        }
         return cb();
       }
 

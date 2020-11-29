@@ -1,8 +1,10 @@
 import Logger from 'bunyan';
 import logMod from './log';
 import { RedisClient } from 'redis';
+import { Notification } from './helpers/send-notification';
+import pkg = require('../package.json');
 
-export type PoliciesClientCallback = (err: Error | null, result: boolean) => void;
+export type PoliciesClientCallback = (err: Error | null, result: boolean, errorNotification?: Notification) => void;
 
 export interface PoliciesClient {
   isBanned(username: string, callback: PoliciesClientCallback): void;
@@ -52,7 +54,13 @@ export class RealClient implements PoliciesClient {
       // }
       if (chatDisabled === 'true') {
         this.log.info({receiver}, 'do not notify: chat disabled for receiver');
-        return callback(null, false);
+        const errNotification: Notification = {
+          from: pkg.api,
+          to: sender,
+          type: 'chat-disabled',
+          data: { receiver },
+        };
+        return callback(null, false, errNotification);
       }
       if (blocked) {
         const blockedArray = blocked.split(',');
