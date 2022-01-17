@@ -43,6 +43,12 @@ function createTest(): Test {
   test.redisClient = fakeredis.createClient();
   test.redisUsermeta = fakeredis.createClient();
 
+  Object.keys(samples.users).forEach((user) => {
+    const item = samples.users[user];
+    test.redisUsermeta?.set(`${item.username}:email`, item.email);
+    test.redisUsermeta?.set(`${item.username}:ConfirmedOn`, JSON.stringify(item.ConfirmedOn));
+  });
+
   test.roomManager = new RoomManager({
     redis: test.redisClient!,
     prefix: `testing:${config.redis.prefix}`,
@@ -218,6 +224,41 @@ describe('Chat API', function () {
           done();
         });
     });
+
+    it('403 if user doesnt have email', done => {
+      test.go()
+        .post(roomsEndpoint('tutoro'))
+        .send(samples.rooms[0])
+        .expect(403)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          expect(res.body.message).to.be.eql('EMAIL_NOT_VERIFIED');
+          done();
+        });
+    });
+
+    it('403 if user is not confirmed', done => {
+      test.go()
+        .post(roomsEndpoint('tutoro2'))
+        .send(samples.rooms[0])
+        .expect(403)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          expect(res.body.message).to.be.eql('EMAIL_NOT_VERIFIED');
+          done();
+        });
+    });
+    it('403 if user last email is not confirmed', done => {
+      test.go()
+        .post(roomsEndpoint('tutoro3'))
+        .send(samples.rooms[0])
+        .expect(403)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          expect(res.body.message).to.be.eql('EMAIL_NOT_VERIFIED');
+          done();
+        });
+    });
   });
 
   const messageChecker = function (message, redisKey) {
@@ -370,6 +411,38 @@ describe('Chat API', function () {
         .expect(403)
         .end(function (err) {
           expect(err).to.be(null);
+          done();
+        });
+    });
+
+    it('403 if user doesnt have email', done => {
+      test.go()
+        .post(messagesEndpoint('tutoro', roomId))
+        .expect(403)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          expect(res.body.message).to.be.eql('EMAIL_NOT_VERIFIED');
+          done();
+        });
+    });
+
+    it('403 if user is not confirmed', done => {
+      test.go()
+        .post(messagesEndpoint('tutoro2', roomId))
+        .expect(403)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          expect(res.body.message).to.be.eql('EMAIL_NOT_VERIFIED');
+          done();
+        });
+    });
+    it('403 if user last email is not confirmed', done => {
+      test.go()
+        .post(messagesEndpoint('tutoro3', roomId))
+        .expect(403)
+        .end(function (err, res) {
+          expect(err).to.be(null);
+          expect(res.body.message).to.be.eql('EMAIL_NOT_VERIFIED');
           done();
         });
     });

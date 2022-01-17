@@ -1,8 +1,11 @@
 export default {
   users: {
-    alice: { token: 'alice-token', username: 'alice' },
-    bob: { token: 'bob-token', username: 'bob' },
-    harry: { token: 'harry-token', username: 'harry' },
+    alice: { token: 'alice-token', username: 'alice', email: 'alice@test.com', ConfirmedOn: { 'alice@test.com': 123456789 } },
+    bob: { token: 'bob-token', username: 'bob', email: 'bob@test.com', ConfirmedOn: { 'bob@test.com': 1255654 } },
+    harry: { token: 'harry-token', username: 'harry', email: 'harry@test.com', ConfirmedOn: { 'harry@test.com': 1255654 } },
+    tutoro: { token: 'tutoro-token', username: 'tutoro' },
+    tutoro2: { token: 'tutoro2-token', username: 'tutoro2', email: 'test@test.com' },
+    tutoro3: { token: 'tutoro3-token', username: 'tutoro3', email: 'tutoro3@test.com', ConfirmedOn: { 'something@test.com': 1255654 } },
   },
 
   rooms: [{

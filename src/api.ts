@@ -17,7 +17,7 @@ import notify from './notify';
 import { PoliciesClient } from './policies';
 import authdbHelper from './helpers/authdb-helper';
 import SendNotification, { SendNotificationFunction } from './helpers/send-notification';
-import { RequestHandler } from 'restify';
+import { Next, Request, RequestHandler, Response } from 'restify';
 
 export interface ApiOptions {
   roomManager?: RoomManager;
@@ -93,6 +93,31 @@ export default function (options: ApiOptions) {
       if (banned) {
         log.info({ username }, 'User banned');
         return next(new restifyErrors.ForbiddenError());
+      }
+
+      return next();
+    });
+  };
+
+  const checkIfConfirmed = (req: Request, res: Response, next: Next) => {
+    //not sure about this code ? we shoudl keep or remove.
+    if (req.params.apiSecret === true) {
+      return next();
+    }
+
+    const {
+      username
+    } = req.params.user;
+
+    return policiesClient.isEmailConfirmed(username, function (err, confirmed) {
+      if (err) {
+        log.error({ err, username }, 'Failed to check confirmation');
+        return next(new restifyErrors.InternalServerError());
+      }
+
+      if (!confirmed) {
+        log.info({ username }, 'User not confirmed');
+        return next(new restifyErrors.ForbiddenError('EMAIL_NOT_VERIFIED'));
       }
 
       return next();
@@ -245,6 +270,7 @@ export default function (options: ApiOptions) {
     // create room
     server.post(`/${prefix}/auth/:authToken/rooms`,
       apiSecretOrAuthMiddleware,
+      checkIfConfirmed,
       checkIfBanned,
       createRoom(true, true),
       sendRoomJson);
@@ -259,6 +285,7 @@ export default function (options: ApiOptions) {
     // add message
     server.post(`/${prefix}/auth/:authToken/rooms/:roomId/messages`,
       apiSecretOrAuthMiddleware,
+      checkIfConfirmed,
       checkIfBanned,
       fetchRoom,
       addMessage(),
