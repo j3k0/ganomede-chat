@@ -15,7 +15,7 @@
   "author": "Jean-Christophe Hoelt <hoelt@fovea.cc>",
   "license": "Private",
   "dependencies": {
-    "async": "^1.5.0",
+    "async": "^2.6.4",
     "authdb": "^0.2.0",
     "bunyan": "^1.8.12",
     "cd": "^0.3.3",
