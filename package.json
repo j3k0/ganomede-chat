@@ -23,7 +23,7 @@
     "lodash": "^4.17.21",
     "newrelic": "^1.20.2",
     "node-statsd": "^0.1.1",
-    "redis": "^3.0.2",
+    "redis": "^3.1.1",
     "restify": "^8.5.1",
     "restify-clients": "^4.0.0",
     "restify-errors": "^8.0.2",
