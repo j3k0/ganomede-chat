@@ -43,7 +43,7 @@
     "eslint": "^4.3.0",
     "expect.js": "^0.3.1",
     "fakeredis": "^2.0.0",
-    "mocha": "^2.3.3",
+    "mocha": "^10.2.0",
     "nodemon": "^2.0.4",
     "sinon": "^1.17.2",
     "supertest": "^1.1.0",
