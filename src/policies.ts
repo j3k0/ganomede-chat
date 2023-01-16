@@ -8,6 +8,7 @@ export type PoliciesClientCallback = (err: Error | null, result: boolean, errorN
 
 export interface PoliciesClient {
   isBanned(username: string, callback: PoliciesClientCallback): void;
+  isEmailConfirmed(username: string, callback: PoliciesClientCallback): void;
   shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback): void;
 }
 
@@ -37,6 +38,46 @@ export class RealClient implements PoliciesClient {
       else {
         callback(null, !!value);
       }
+    });
+  }
+
+  // true if the email of @username is confirmed 
+  // false otherwise
+  // callback(err, boolean)
+  isEmailConfirmed(username: string, callback: PoliciesClientCallback) {
+    //we need to get the email of the user and confirmations info.
+    this.redisUsermeta.mget([`${username}:email`, `${username}:ConfirmedOn`], (err: Error | null, values: string[]) => {
+      if (err) {
+        this.log.warn({ username, err }, 'Failed to check policies');
+        callback(null, true);
+      }
+      const [email, ConfirmedOn] = values;
+      //checking if email exists...
+      if (email === '' || email === null || email === undefined) {
+        this.log.info({ username }, 'user doesnt have an email');
+        return callback(null, false);
+      }
+      //checking if confirmation info exists.
+      if (ConfirmedOn === '' || ConfirmedOn === null || ConfirmedOn === undefined) {
+        this.log.info({ username }, 'confirmed on object is empty');
+        return callback(null, false);
+      }
+
+      try {
+        //ConfirmedOn is like {'test@emain.com': 1232423424, 'another@email.com': 1233242342}
+        //for each email confirmed => there is a timestamp of confirmation.
+        //parsing the strin to an object.
+        const confirmations: { [key: string]: number } = JSON.parse(ConfirmedOn);
+
+        //checking if the current email of the user is confirmed.
+        //then we callback with true.
+        if (confirmations[email]) {
+          return callback(null, true);
+        }
+      } catch (e) {
+        this.log.warn({ e }, 'Failed to parse ConfirmedOn');
+      }
+      callback(null, false);
     });
   }
 
@@ -80,6 +121,10 @@ export class RealClient implements PoliciesClient {
 export class FakeClient {
   isBanned(_username: string, callback: PoliciesClientCallback) {
     const fn = () => callback(null, false);
+    return process.nextTick(fn);
+  }
+  isEmailConfirmed(_username: string, callback: PoliciesClientCallback) {
+    const fn = () => callback(null, true);
     return process.nextTick(fn);
   }
   shouldNotify(_sender: string, _receiver: string, callback: PoliciesClientCallback) {
