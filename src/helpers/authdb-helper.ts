@@ -57,7 +57,8 @@ export default {
       if (!req.params) req.params = {};
       const authToken: string | undefined = req.params.authToken;
       if (!authToken) {
-        return next(new restifyErrors.InvalidContentError('invalid content'));
+        next(new restifyErrors.InvalidContentError('invalid content'));
+        return;
       }
       if (secret) {
         const spoofUsername = parseUsernameFromSecretToken(authToken);
@@ -66,10 +67,11 @@ export default {
             _secret: true,
             username: spoofUsername
           };
-          return next();
+          next();
+          return;
         }
       }
-      return authdbClient.getAccount(authToken, function (err, account) {
+      authdbClient.getAccount(authToken, function (err, account) {
         if (err || !account) {
           if (err) {
             log.error('authdbClient.getAccount() failed', {
@@ -79,10 +81,11 @@ export default {
           }
           const authErr = new restifyErrors.UnauthorizedError('not authorized');
           authErr.body.code = 'UnauthorizedError'; // legacy error code, we want to keep compatibility
-          return next(authErr);
+          next(authErr);
+          return;
         }
         req.params.user = account;
-        return next();
+        next();
       });
     };
   }

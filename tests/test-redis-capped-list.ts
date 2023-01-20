@@ -34,62 +34,68 @@ describe('RdisCappedList', function() {
     before(function(done) {
       const jsons = itemsInserted.map(item => JSON.stringify(item));
       const args = [redisKey as any].concat(jsons).concat(done);
-      return redisClient.rpush.apply(redisClient, args);
+      redisClient.rpush.apply(redisClient, args);
     });
 
-    after(done => redisClient.del(redisKey, done));
+    after(done => { redisClient.del(redisKey, done); });
 
     it('returns items in the list', function(done) {
       const list = instance({id: redisKey});
-      return list.items(function(err, items) {
+      list.items(function(err, items) {
         expect(err).to.be(null);
         expect(items).to.eql(itemsInserted);
-        return done();
+        done();
       });
     });
 
     return it('returns empty array if there are no items or key', function(done) {
       const list = instance({id: 'w/ever'});
-      return list.items(function(err, items) {
+      list.items(function(err, items) {
         expect(err).to.be(null);
         expect(items).to.eql([]);
-        return done();
+        done();
       });
     });
   });
 
-  return describe('#add()', function() {
+  describe('#add()', function() {
     const redisKey = id('#add()');
     const list = instance({id: redisKey, maxSize: 2});
 
     after(done => redisClient.del(redisKey, done));
 
-    it('adds element to the list', done => list.add(item(1), function(err, newSize) {
-      expect(err).to.be(null);
-      expect(newSize).to.be(1);
-      return done();
-    }));
-
-    it('element is added to the beginning', done => list.add(item(2), function(err, newSize) {
-      expect(err).to.be(null);
-      expect(newSize).to.be(2);
-
-      return redisClient.lrange(redisKey, 0, -1, function(err, items) {
+    it('adds element to the list', done => {
+      list.add(item(1), function (err, newSize) {
         expect(err).to.be(null);
-        expect(JSON.parse(items[0])).to.eql(item(2));
-        return done();
+        expect(newSize).to.be(1);
+        done();
       });
-    }));
+    });
 
-    return it('if list is too big, removes 1 element from the tail (oldest)', done => list.add(item(3), function(err, newSize) {
-      expect(err).to.be(null);
-      expect(newSize).to.be(2);
-
-      return redisClient.lrange(redisKey, 0, -1, function(err, items) {
+    it('element is added to the beginning', done => {
+      list.add(item(2), function (err, newSize) {
         expect(err).to.be(null);
-        expect(items.map(JSON.parse.bind(JSON) as any)).to.eql([3, 2].map(item));
-        return done();
+        expect(newSize).to.be(2);
+
+        redisClient.lrange(redisKey, 0, -1, function (err, items) {
+          expect(err).to.be(null);
+          expect(JSON.parse(items[0])).to.eql(item(2));
+          done();
+        });
       });
-    }));
+    });
+
+    it('if list is too big, removes 1 element from the tail (oldest)', done => {
+      list.add(item(3), function (err, newSize) {
+        expect(err).to.be(null);
+        expect(newSize).to.be(2);
+
+        redisClient.lrange(redisKey, 0, -1, function (err, items) {
+          expect(err).to.be(null);
+          expect(items.map(JSON.parse.bind(JSON) as any)).to.eql([3, 2].map(item));
+          done();
+        });
+      });
+    });
   });
 });

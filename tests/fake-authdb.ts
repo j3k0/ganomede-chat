@@ -9,13 +9,15 @@ export class AuthdbClient {
     this.store = {};
   }
   addAccount(token, user) {
-    return this.store[token] = user;
+    this.store[token] = user;
   }
   getAccount(token, cb) {
     if (!this.store[token]) {
-      return cb("invalid authentication token");
+      cb("invalid authentication token");
     }
-    return cb(null, this.store[token]);
+    else {
+      cb(null, this.store[token]);
+    }
   }
 }
 

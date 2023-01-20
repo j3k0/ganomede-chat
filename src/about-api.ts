@@ -14,7 +14,7 @@ const about = {
 
 const sendAbout = function(req, res, next) {
   res.send(about);
-  return next();
+  next();
 };
 
 const addRoutes = function(prefix: string, server: Server) {

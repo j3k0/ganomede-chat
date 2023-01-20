@@ -26,19 +26,23 @@ describe('Main', function() {
     });
   });
 
-  after(done => server.close(done));
+  after(done => { server.close(done); });
 
-  it('/ping', done => go()
-    .get(endpoint('/ping/stuff'))
-    .expect(200, 'pong/stuff', done));
+  it('/ping', done => {
+    go()
+      .get(endpoint('/ping/stuff'))
+      .expect(200, 'pong/stuff', done);
+  });
 
-  return it('/about', done => go()
-    .get('/about')
-    .expect(200)
-    .end(function(err, res) {
-      expect(err).to.be(null);
-      expect(res.body).to.be.an(Object);
-      expect(res.body).to.have.property('type', config.pkg.type);
-      return done();
-  }));
+  it('/about', done => {
+    go()
+      .get('/about')
+      .expect(200)
+      .end(function (err, res) {
+        expect(err).to.be(null);
+        expect(res.body).to.be.an(Object);
+        expect(res.body).to.have.property('type', config.pkg.type);
+        done();
+      });
+  });
 });

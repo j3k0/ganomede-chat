@@ -126,47 +126,53 @@ export class RoomManager {
   create(options, callback) {
     const tickError = function (message) {
       const err = new Error(message);
-      return process.nextTick(callback.bind(null, err));
+      process.nextTick(callback.bind(null, err));
     };
 
     if (!options.type) {
-      return tickError(RoomManager.errors.INVALID_CREATION_OPTIONS);
+      tickError(RoomManager.errors.INVALID_CREATION_OPTIONS);
+      return;
     }
 
     if (!Array.isArray(options.users) || (!(options.users.length > 0))) {
-      return tickError(RoomManager.errors.INVALID_CREATION_OPTIONS);
+      tickError(RoomManager.errors.INVALID_CREATION_OPTIONS);
+      return;
     }
 
     const room = new Room(options);
 
-    return this.redis.set(this.key(room.id), JSON.stringify(room), 'PX', this.ttlMillis, 'NX',
+    this.redis.set(this.key(room.id), JSON.stringify(room), 'PX', this.ttlMillis, 'NX',
       (err, created) => {
         if (err) {
-          return callback(err);
+          callback(err);
+          return;
         }
 
         if (!created) {
-          return callback(new Error(RoomManager.errors.ROOM_EXISTS));
+          callback(new Error(RoomManager.errors.ROOM_EXISTS));
+          return;
         }
 
         room._setMessageList(this.messageList(room.id));
-        return callback(null, room);
+        callback(null, room);
       });
   }
 
   findById(roomId, callback) {
-    return this.redis.get(this.key(roomId), (err, room) => {
+    this.redis.get(this.key(roomId), (err, room) => {
       if (err) {
-        return callback(err);
+        callback(err);
+        return;
       }
 
       if (!room) {
-        return callback(null, null);
+        callback(null, null);
+        return;
       }
 
       const info = JSON.parse(room);
       const list = this.messageList(roomId);
-      return callback(null, new Room(info, list));
+      callback(null, new Room(info, list));
     });
   }
 

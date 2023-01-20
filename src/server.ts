@@ -25,7 +25,8 @@ export default function() {
         logger(req, res);
       }
       if (next && (typeof next === 'function')) {
-        return next();
+        next();
+        return;
       }
     };
   };
@@ -46,7 +47,7 @@ export default function() {
   const setRequestId = function(req, res, next) {
     res.setHeader('x-request-id', req.id());
     req.log = req.log.child({req_id: req.id()});
-    return next();
+    next();
   };
   server.use(setRequestId);
 

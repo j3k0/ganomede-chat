@@ -62,54 +62,60 @@ export default function (options: ApiOptions) {
   const apiSecretOrAuthMiddleware = function (req, res, next) {
     if (req.params.authToken === process.env.API_SECRET) {
       req.params.apiSecret = true;
-      return next();
+      next();
+      return;
     }
 
-    return authMiddleware(req, res, next);
+    authMiddleware(req, res, next);
   };
 
   const requireSecret = function (req, res, next) {
     if (!req.params.apiSecret) {
-      return next(new restifyErrors.UnauthorizedError);
+      next(new restifyErrors.UnauthorizedError);
     }
-    return next();
+    next();
   };
 
   const checkIfBanned = function (req, res, next) {
     if (req.params.apiSecret === true) {
-      return next();
+      next();
+      return;
     }
 
     const {
       username
     } = req.params.user;
 
-    return policiesClient.isBanned(username, function (err, banned) {
+    policiesClient.isBanned(username, function (err, banned) {
       if (err) {
         log.error({ err, username }, 'Failed to check ban');
-        return next(new restifyErrors.InternalServerError());
+        next(new restifyErrors.InternalServerError());
+        return;
       }
 
       if (banned) {
         log.info({ username }, 'User banned');
-        return next(new restifyErrors.ForbiddenError());
+        next(new restifyErrors.ForbiddenError());
+        return;
       }
 
-      return next();
+      next();
     });
   };
 
   const checkIfMuted = function (req, res, next) {
     if (req.params.apiSecret === true) {
-      return next();
+      next();
+      return;
     }
 
     const username = req.params.user.username;
 
-    return policiesClient.isMuted(username, function (err, muted) {
+    policiesClient.isMuted(username, function (err, muted) {
       if (err) {
         log.error({ err, username }, 'Failed to check muted');
-        return next(new restifyErrors.InternalServerError());
+        next(new restifyErrors.InternalServerError());
+        return;
       }
 
       req.params.muted = muted;
@@ -127,19 +133,22 @@ export default function (options: ApiOptions) {
         roomId: req.params.roomId
       }
       );
-      return next(new restifyErrors.InternalServerError());
+      next(new restifyErrors.InternalServerError());
+      return;
     }
 
     if (!room) {
-      return next(new restifyErrors.NotFoundError());
+      next(new restifyErrors.NotFoundError());
+      return;
     }
 
     if (!req.params.apiSecret && !room.hasUser(req.params.user.username)) {
-      return next(new restifyErrors.UnauthorizedError());
+      next(new restifyErrors.UnauthorizedError());
+      return;
     }
 
     req.params.room = room;
-    return next();
+    next();
   });
 
   const fetchMessages = (req, res, next) => req.params.room.messages(function (err, messages) {
@@ -150,23 +159,26 @@ export default function (options: ApiOptions) {
         messageList: req.params.room.messageList.id
       }
       );
-      return next(new restifyErrors.InternalServerError());
+      next(new restifyErrors.InternalServerError());
+      return;
     }
 
     req.params.messages = messages;
-    return next();
+    next();
   });
 
   const createRoom = (fetchMessages: boolean, refreshTtl: boolean): RequestHandler => (function (req, res, next) {
     if (req.params.authToken !== process.env.API_SECRET) {
       if (!(req.body.users.indexOf(req.params.user.username) >= 0)) {
-        return next(new restifyErrors.UnauthorizedError());
+        next(new restifyErrors.UnauthorizedError());
+        return;
       }
     }
     roomManager.create(req.body || {}, function (err, room) {
       if (err) {
         if (err.message === RoomManager.errors.INVALID_CREATION_OPTIONS) {
-          return next(new restifyErrors.BadRequestError());
+          next(new restifyErrors.BadRequestError());
+          return;
         }
 
         if (err.message === RoomManager.errors.ROOM_EXISTS) {
@@ -184,7 +196,7 @@ export default function (options: ApiOptions) {
           ], function (err, room, messages) {
             if (err) {
               req.log.warn({ err, body: req.body }, 'createRoom() failed to retrieve existing room');
-              return next(new restifyErrors.InternalServerError());
+              next(new restifyErrors.InternalServerError());
             }
 
             req.params.room = room;
@@ -204,22 +216,26 @@ export default function (options: ApiOptions) {
 
       req.params.room = room;
       req.params.messages = [];
-      return next();
+      next();
     });
   });
 
   const sendRoomJson = function (req, res, next) {
     if (res.headersSent) {
-      return next();
+      next();
+      return;
     }
 
     const reply = lodash.extend({ messages: req.params.messages }, req.params.room);
     res.json(reply);
-    return next();
+    next();
   };
 
   const addMessage = (forcedType?: string) => (function (req, res, next) {
-    if (req.params.muted) return next();
+    if (req.params.muted) {
+      next();
+      return;
+    }
     let message: Message;
     try {
       if (forcedType) {
@@ -229,7 +245,8 @@ export default function (options: ApiOptions) {
       message = new Message(username, req.body);
     } catch (e) {
       req.log.warn({err:e}, 'Bad Request');
-      return next(new restifyErrors.BadRequestError(e.message));
+      next(new restifyErrors.BadRequestError(e.message));
+      return;
     }
 
     const room:Room = req.params.room;
@@ -239,7 +256,8 @@ export default function (options: ApiOptions) {
           err,
           body: req.body
         }, 'addMessage() failed');
-        return next(new restifyErrors.InternalServerError());
+        next(new restifyErrors.InternalServerError());
+        return;
       }
 
       notify(policiesClient, sendNotification, req.params.room, message, req.body.push);
