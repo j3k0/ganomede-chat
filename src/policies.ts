@@ -58,16 +58,20 @@ export class RealClient implements PoliciesClient {
 
   shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback): void {
     // logMod.info('RealPoliciesClient > should notify?');
-    this.redisUsermeta.mget([`${receiver}:$blocked`, `${receiver}:$chatdisabled`], (err: Error | null, values: string[]) => {
+    this.redisUsermeta.mget([`${receiver}:$blocked`, `${receiver}:$chatdisabled`, `${receiver}:$muted`], (err: Error | null, values: string[]) => {
       if (err) {
         this.log.warn({sender, receiver, err}, 'Failed to check policies');
         callback(null, true);
       }
-      const [blocked, chatDisabled] = values;
+      const [blocked, chatDisabled, muted] = values;
       // if (banned) {
       //   this.log.info({sender}, 'do not notify: sender is banned');
       //   return callback(null, false);
       // }
+      if (muted === 'true') {
+        this.log.info({receiver}, 'do not notify: receiver muted');
+        return callback(null, false);
+      }
       if (chatDisabled === 'true') {
         this.log.info({receiver}, 'do not notify: chat disabled for receiver');
         const errNotification: Notification = {
