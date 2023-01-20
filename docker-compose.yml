@@ -1,20 +1,25 @@
-app:
-    build: .
-    command: sh -c "node build/src/index.js | npx bunyan"
-    ports:
-     - "8000"
-    links:
-     - redisAuth:redis_auth
-     - redisChat:redis_chat
-     - redisUsermeta:redis_usermeta
-    environment:
-     - "API_SECRET=BE295A7D-C10F-4448-9198-D5AB142E7546"
-
-redisAuth:
-    image: redis:alpine
-
-redisChat:
-    image: redis:alpine
-
-redisUsermeta:
-    image: redis:alpine
+services:
+    app:
+        build: .
+        command: sh -c "node build/src/index.js | npx bunyan"
+        ports:
+         - "8000"
+        links:
+         - redisAuth:redis_auth
+         - redisChat:redis_chat
+         - redisUsermeta:redis_usermeta
+        environment:
+         - "API_SECRET=BE295A7D-C10F-4448-9198-D5AB142E7546"
+         - "REDIS_CHAT_PORT_6379_TCP_ADDR=redisChat"
+         - "REDIS_AUTH_PORT_6379_TCP_ADDR=redisAuth"
+         - "REDIS_USERMETA_PORT_6379_TCP_ADDR=redisUsermeta"
+    
+    redisAuth:
+        image: redis:alpine
+    
+    redisChat:
+        image: redis:alpine
+    
+    redisUsermeta:
+        image: redis:alpine
+    
