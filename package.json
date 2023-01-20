@@ -40,7 +40,7 @@
     "@types/restify": "^8.4.2",
     "@types/restify-errors": "^4.3.3",
     "blanket": "^1.1.6",
-    "eslint": "^4.3.0",
+    "eslint": "^8.32.0",
     "expect.js": "^0.3.1",
     "fakeredis": "^2.0.0",
     "mocha": "^10.1.0",
