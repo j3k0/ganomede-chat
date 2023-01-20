@@ -44,7 +44,7 @@
     "expect.js": "^0.3.1",
     "fakeredis": "^2.0.0",
     "mocha": "^10.1.0",
-    "nodemon": "^2.0.4",
+    "nodemon": "^2.0.20",
     "sinon": "^1.17.2",
     "supertest": "^6.3.3",
     "typescript": "^3.9.3"
