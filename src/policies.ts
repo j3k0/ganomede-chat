@@ -8,6 +8,7 @@ export type PoliciesClientCallback = (err: Error | null, result: boolean, errorN
 
 export interface PoliciesClient {
   isBanned(username: string, callback: PoliciesClientCallback): void;
+  isMuted(username: string, callback: PoliciesClientCallback): void;
   shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback): void;
 }
 
@@ -32,6 +33,21 @@ export class RealClient implements PoliciesClient {
     this.redisUsermeta.get(`${username}:$banned`, (err: Error | null, value: string | null) => {
       if (err) {
         this.log.warn({username, err}, 'Failed to check ban info');
+        callback(null, false);
+      }
+      else {
+        callback(null, !!value);
+      }
+    });
+  }
+
+  // true if @username is banned
+  // false otherwise
+  // callback(err, boolean)
+  isMuted(username: string, callback: PoliciesClientCallback) {
+    this.redisUsermeta.get(`${username}:$muted`, (err: Error | null, value: string | null) => {
+      if (err) {
+        this.log.warn({username, err}, 'Failed to check muted info');
         callback(null, false);
       }
       else {
@@ -84,6 +100,11 @@ export class FakeClient {
   }
   shouldNotify(_sender: string, _receiver: string, callback: PoliciesClientCallback) {
     // logMod.info('FakePoliciesClient > should notify?');
+    const fn = () => callback(null, false);
+    return process.nextTick(fn);
+  }
+
+  isMuted(username: string, callback: PoliciesClientCallback) {
     const fn = () => callback(null, false);
     return process.nextTick(fn);
   }

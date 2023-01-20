@@ -99,6 +99,27 @@ export default function (options: ApiOptions) {
     });
   };
 
+  const checkIfMuted = function (req, res, next) {
+    if (req.params.apiSecret === true) {
+      return next();
+    }
+
+    const username = req.params.user.username;
+
+    return policiesClient.isMuted(username, function (err, muted) {
+      if (err) {
+        log.error({ err, username }, 'Failed to check muted');
+        return next(new restifyErrors.InternalServerError());
+      }
+
+      req.params.muted = muted;
+      if (muted) {
+        log.info({ username }, 'User muted');
+      }
+      next();
+    });
+  };
+
   const fetchRoom = (req, res, next) => roomManager.findById(req.params.roomId, function (err, room) {
     if (err) {
       log.error('fetchRoom() failed', {
@@ -198,6 +219,7 @@ export default function (options: ApiOptions) {
   };
 
   const addMessage = (forcedType?: string) => (function (req, res, next) {
+    if (req.params.muted) return next();
     let message: Message;
     try {
       if (forcedType) {
@@ -260,6 +282,7 @@ export default function (options: ApiOptions) {
     server.post(`/${prefix}/auth/:authToken/rooms/:roomId/messages`,
       apiSecretOrAuthMiddleware,
       checkIfBanned,
+      checkIfMuted,
       fetchRoom,
       addMessage(),
       refreshRoom);
