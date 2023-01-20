@@ -19,7 +19,7 @@
     "authdb": "^0.2.0",
     "bunyan": "^1.8.12",
     "cd": "^0.3.3",
-    "forever": "^0.15.1",
+    "forever": "^4.0.3",
     "lodash": "^4.17.21",
     "newrelic": "^9.8.0",
     "node-statsd": "^0.1.1",
