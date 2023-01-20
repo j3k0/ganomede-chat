@@ -46,7 +46,7 @@
     "mocha": "^10.1.0",
     "nodemon": "^2.0.4",
     "sinon": "^1.17.2",
-    "supertest": "^1.1.0",
+    "supertest": "^6.3.3",
     "typescript": "^3.9.3"
   }
 }
