@@ -52,7 +52,7 @@ export class RealClient implements PoliciesClient {
         callback(null, false);
       }
       else {
-        callback(null, !!value);
+        callback(null, isFinite(parseInt(value || '')));
       }
     });
   }
@@ -67,7 +67,7 @@ export class RealClient implements PoliciesClient {
         callback(null, false);
       }
       else {
-        callback(null, !!value);
+        callback(null, value === 'true');
       }
     });
   }

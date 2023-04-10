@@ -60,9 +60,11 @@ Contains the policies (banned, blocked users, chat disabled, etc)
  * `userA:$blocked` -> `user1,user2,user3`
    * List of users that "userA" has blocked. Messages from users in this list won't be sent to "userA".
  * `userA:$banned` -> timestamp
-   * trueish if the user is banned.
- * `userA:$chat_disabled`-> `"true"`
-   * the string `"true"` indicates that the chat is disabled for this user.
+   * A timestamp indicated the user is banned.
+ * `userA:$chatdisabled`-> `"true"`
+   * the string `"true"` indicates that the chat is disabled for this user (disabled by the user).
+ * `userA:$muted`-> `"true"`
+   * the string `"true"` indicates that this user cannot chat (disabled by admin).
 
 
 API
