@@ -12,6 +12,7 @@ import policies, { PoliciesClient } from '../src/policies';
 import restify, { Server } from 'restify';
 import fakeredis from 'fakeredis';
 import { RedisClient } from 'redis';
+import log from '../src/log';
 fakeredis.fast = true;
 
 interface Test {
@@ -35,7 +36,14 @@ function createTest(): Test {
   test.server.use(restify.plugins.queryParser());
   test.server.use(restify.plugins.bodyParser());
   test.server.use(restify.plugins.gzipResponse())
-  test.go = supertest.bind(null, test.server);
+  // Automatically add a request-id to the response
+  const setRequestId = function(req, res, next) {
+    res.setHeader('x-request-id', req.id());
+    req.log = log.child({req_id: req.id()});
+    next();
+  };
+  test.server.use(setRequestId);
+    test.go = supertest.bind(null, test.server);
   test.prefix = `testing:${config.redis.prefix}`;
 
   test.authDb = fakeAuthdb.createClient();
@@ -339,15 +347,17 @@ describe('Chat API', function () {
         .post(messagesEndpoint('alice', roomId))
         .send(message)
         .end(function (err, res) {
-          expect(test.spies.sendNotification.callCount).to.be(1);
-          const callArgs = test.spies.sendNotification.getCall(0).args;
-          const notification = callArgs[0];
-          expect(notification.to).to.be('bob');
-          expect(notification.data).to.eql(lodash.extend({
-            roomId: samples.rooms[0].id,
-            from: 'alice'
-          }, message));
-          done();
+          setTimeout(() => {
+            expect(test.spies.sendNotification.callCount).to.be(1);
+            const callArgs = test.spies.sendNotification.getCall(0).args;
+            const notification = callArgs[0];
+            expect(notification.to).to.be('bob');
+            expect(notification.data).to.eql(lodash.extend({
+              roomId: samples.rooms[0].id,
+              from: 'alice'
+            }, message));
+            done();
+          }, 10);
         });
     });
 

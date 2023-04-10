@@ -272,7 +272,7 @@ export default function (options: ApiOptions) {
       message = new Message(username, req.body);
     } catch (e) {
       req.log.warn({err:e}, 'Bad Request');
-      next(new restifyErrors.BadRequestError(e.message));
+      next(new restifyErrors.BadRequestError((e as any).message));
       return;
     }
 
@@ -312,7 +312,6 @@ export default function (options: ApiOptions) {
     // create room
     server.post(`/${prefix}/auth/:authToken/rooms`,
       apiSecretOrAuthMiddleware,
-      checkIfHasDisabledChat,
       checkIfBanned,
       createRoom(true, true),
       sendRoomJson);
