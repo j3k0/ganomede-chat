@@ -7,6 +7,7 @@ import pkg = require('../package.json');
 export type PoliciesClientCallback = (err: Error | null, result: boolean, errorNotification?: Notification) => void;
 
 export interface PoliciesClient {
+  hasDisabledChat(username: string, callback: PoliciesClientCallback): void;
   isBanned(username: string, callback: PoliciesClientCallback): void;
   isMuted(username: string, callback: PoliciesClientCallback): void;
   shouldNotify(sender: string, receiver: string, callback: PoliciesClientCallback): void;
@@ -24,6 +25,21 @@ export class RealClient implements PoliciesClient {
   constructor(redisUsermeta: RedisClient, log: Logger = logMod) {
     this.log = log;
     this.redisUsermeta = redisUsermeta;
+  }
+
+  // true if @username has disabled chat
+  // false otherwise
+  // callback(err, boolean)
+  hasDisabledChat(username: string, callback: PoliciesClientCallback) {
+    this.redisUsermeta.get(`${username}:$chatdisabled`, (err: Error | null, value: string | null) => {
+      if (err) {
+        this.log.warn({username, err}, 'Failed to check ban info');
+        callback(null, false);
+      }
+      else {
+        callback(null, value === 'true');
+      }
+    });
   }
 
   // true if @username is banned
@@ -98,10 +114,16 @@ export class RealClient implements PoliciesClient {
 // When users service is not configured,
 // consider every account to be in good standing (not banned).
 export class FakeClient {
+  hasDisabledChat(_username: string, callback: PoliciesClientCallback) {
+    const fn = () => callback(null, false);
+    return process.nextTick(fn);
+  }
+
   isBanned(_username: string, callback: PoliciesClientCallback) {
     const fn = () => callback(null, false);
     return process.nextTick(fn);
   }
+
   shouldNotify(_sender: string, _receiver: string, callback: PoliciesClientCallback) {
     // logMod.info('FakePoliciesClient > should notify?');
     const fn = () => callback(null, false);

@@ -76,6 +76,33 @@ export default function (options: ApiOptions) {
     next();
   };
 
+  const checkIfHasDisabledChat = function (req, res, next) {
+    if (req.params.apiSecret === true) {
+      next();
+      return;
+    }
+
+    const {
+      username
+    } = req.params.user;
+
+    policiesClient.hasDisabledChat(username, function (err, hasHasDisabledChat) {
+      if (err) {
+        log.error({ err, username }, 'Failed to check ban');
+        next(new restifyErrors.InternalServerError());
+        return;
+      }
+
+      if (hasHasDisabledChat) {
+        log.info({ username }, 'User has disabled chat');
+        next(new restifyErrors.ForbiddenError());
+        return;
+      }
+
+      next();
+    });
+  };
+
   const checkIfBanned = function (req, res, next) {
     if (req.params.apiSecret === true) {
       next();
@@ -285,6 +312,7 @@ export default function (options: ApiOptions) {
     // create room
     server.post(`/${prefix}/auth/:authToken/rooms`,
       apiSecretOrAuthMiddleware,
+      checkIfHasDisabledChat,
       checkIfBanned,
       createRoom(true, true),
       sendRoomJson);
@@ -299,6 +327,7 @@ export default function (options: ApiOptions) {
     // add message
     server.post(`/${prefix}/auth/:authToken/rooms/:roomId/messages`,
       apiSecretOrAuthMiddleware,
+      checkIfHasDisabledChat,
       checkIfBanned,
       checkIfMuted,
       fetchRoom,
